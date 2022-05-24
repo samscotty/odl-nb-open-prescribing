@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Iterable, Optional, TypedDict
+from typing import Iterable, Optional, TypedDict, Union
 
 
 class SpendByCCG(TypedDict):
@@ -10,6 +10,27 @@ class SpendByCCG(TypedDict):
     date: str
     row_id: str
     row_name: str
+
+
+@dataclass(frozen=True)
+class CCGSpend:
+    items: int
+    quantity: float
+    actual_cost: float
+    date: date
+    row_id: str
+    row_name: str
+
+    @classmethod
+    def from_dict(cls, data: SpendByCCG):
+        return cls(
+            items=data["items"],
+            quantity=data["quantity"],
+            actual_cost=data["actual_cost"],
+            date=datetime.strptime(data["date"], "%Y-%m-%d").date(),
+            row_id=data["row_id"],
+            row_name=data["row_id"],
+        )
 
 
 class FeatureProperties(TypedDict):
@@ -48,27 +69,6 @@ class FeatureCollection(TypedDict):
     features: list[Feature]
 
 
-@dataclass(frozen=True)
-class CCGSpend:
-    items: int
-    quantity: float
-    actual_cost: float
-    date: date
-    row_id: str
-    row_name: str
-
-    @classmethod
-    def from_dict(cls, data: SpendByCCG):
-        return cls(
-            items=data["items"],
-            quantity=data["quantity"],
-            actual_cost=data["actual_cost"],
-            date=datetime.strptime(data["date"], "%Y-%m-%d").date(),
-            row_id=data["row_id"],
-            row_name=data["row_id"],
-        )
-
-
 class CCGBoundaries:
     def __init__(self, features: FeatureCollection):
         self._code_to_feature_mapping = {
@@ -84,3 +84,6 @@ class CCGBoundaries:
 
     def __iter__(self) -> Iterable[Feature]:
         return (feature for feature in self.features)
+
+
+ApiJsonResponse = Union[SpendByCCG, FeatureCollection]
