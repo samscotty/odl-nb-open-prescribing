@@ -86,4 +86,4 @@ class CCGBoundaries:
         return (feature for feature in self.features)
 
 
-ApiJsonResponse = Union[SpendByCCG, FeatureCollection]
+ApiJsonResponse = Union[FeatureCollection, list[SpendByCCG]]
