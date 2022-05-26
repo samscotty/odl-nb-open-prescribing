@@ -14,7 +14,12 @@ ApiParams = Optional[MutableMapping[str, str]]
 
 class OpenPrescribingHttpApi:
 
-    """ """
+    """Interface to Open Prescribing RESTful API service.
+
+    Args:
+        headers: Dictionary of HTTP headers to send with requests.
+
+    """
 
     def __init__(self, headers: Optional[MutableMapping[str, str]] = None) -> None:
         self._api_version = 1.0
@@ -28,15 +33,29 @@ class OpenPrescribingHttpApi:
     def query_org_location(self, api_params: ApiParams = None) -> CCGBoundaries:
         """Search for the boundaries of a CCG, or location of a practice, by code.
 
+        Args:
+            api_params: Query parameters to send with GET request.
+
         Note:
             API returns GeoJSON.
+
+        Returns:
+            Boundaries of the CCGs.
 
         """
         response = self._search(path="org_location", api_params=api_params)
         return CCGBoundaries(response.json())
 
     def query_spending_by_ccg(self, api_params: ApiParams = None) -> list[CCGSpend]:
-        """Queries the last five years of data and returns spending and items by CCG by month."""
+        """Queries the last five years of data and returns spending and items by CCG by month.
+
+        Args:
+            api_params: Query parameters to send with GET request.
+
+        Returns:
+            Monthly spending and items for each CCG.
+
+        """
         response = self._search(path="spending_by_ccg", api_params=api_params)
         return [CCGSpend.from_dict(x) for x in response.json()]
 
