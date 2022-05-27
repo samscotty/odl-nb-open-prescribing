@@ -1,3 +1,4 @@
+from collections import ChainMap
 from datetime import date
 from http import HTTPStatus
 
@@ -17,7 +18,7 @@ def mock_query_spending_by_ccg_api_response(mocker, spend_json):
     response = mocker.Mock()
     response.json = mocker.Mock(return_value=spend_json)
     response.status_code = HTTPStatus
-    mocker.patch(
+    yield mocker.patch(
         "nb_open_prescribing.api.OpenPrescribingHttpApi._search",
         return_value=response,
     )
@@ -58,7 +59,7 @@ def mock_query_org_location_api_response(mocker, boundaries_json):
     response = mocker.Mock()
     response.json = mocker.Mock(return_value=boundaries_json)
     response.status_code = HTTPStatus
-    mocker.patch(
+    yield mocker.patch(
         "nb_open_prescribing.api.OpenPrescribingHttpApi._search",
         return_value=response,
     )
@@ -104,3 +105,42 @@ def test_query_org_location(mock_query_org_location_api_response):
     expected = CCGBoundaries(FEATURE_COLLECTION_TEST_JSON_DATA)
     assert actual.crs == expected.crs
     assert actual.features == expected.features
+
+
+@pytest.fixture
+def mock_requests_response(mocker):
+    response = mocker.Mock()
+    response.json = mocker.Mock(return_value=FEATURE_COLLECTION_TEST_JSON_DATA)
+    response.status_code = HTTPStatus
+    response.raise_for_status = mocker.Mock(return_value=None)
+    yield mocker.patch(
+        "requests.Session.get",
+        return_value=response,
+    )
+
+
+def test__search_query_construction(mock_requests_response):
+    api = OpenPrescribingHttpApi()
+    api.query_org_location()
+    mock_requests_response.assert_called_once_with(
+        "https://openprescribing.net/api/1.0/org_location",
+        params=ChainMap({"format": "json"}),
+    )
+
+
+def test__search_handles_api_params(mock_requests_response):
+    api = OpenPrescribingHttpApi()
+    api.query_org_location(api_params={"add": "me"})
+    mock_requests_response.assert_called_once_with(
+        "https://openprescribing.net/api/1.0/org_location",
+        params=ChainMap({"format": "json"}, {"add": "me"}),
+    )
+
+
+def test__search_handles_api_params_json_format(mock_requests_response):
+    api = OpenPrescribingHttpApi()
+    api.query_org_location(api_params={"format": "csv", "still": "json"})
+    mock_requests_response.assert_called_once_with(
+        "https://openprescribing.net/api/1.0/org_location",
+        params=ChainMap({"format": "json"}, {"format": "csv", "still": "json"}),
+    )
