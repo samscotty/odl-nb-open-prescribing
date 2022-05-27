@@ -29,7 +29,7 @@ class CCGSpend:
             actual_cost=data["actual_cost"],
             date=datetime.strptime(data["date"], "%Y-%m-%d").date(),
             row_id=data["row_id"],
-            row_name=data["row_id"],
+            row_name=data["row_name"],
         )
 
 
