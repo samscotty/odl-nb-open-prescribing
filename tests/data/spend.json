@@ -1,0 +1,26 @@
+[
+    {
+        "items": 600,
+        "quantity": 10000.0,
+        "actual_cost": 12345.67,
+        "date": "2022-01-01",
+        "row_id": "ABC",
+        "row_name": "ANOTHER CCG"
+    },
+    {
+        "items": 700,
+        "quantity": 20250.0,
+        "actual_cost": 23456.78,
+        "date": "2022-02-01",
+        "row_id": "ABC",
+        "row_name": "ANOTHER CCG"
+    },
+    {
+        "items": 800,
+        "quantity": 30500.0,
+        "actual_cost": 34567.89,
+        "date": "2022-03-01",
+        "row_id": "ABC",
+        "row_name": "ANOTHER CCG"
+    }
+]
