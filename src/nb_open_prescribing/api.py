@@ -1,6 +1,6 @@
 import logging
 from collections import ChainMap
-from typing import MutableMapping, Optional
+from typing import Iterable, MutableMapping, Optional, Protocol
 from urllib.parse import urljoin
 
 from requests import Response, Session
@@ -88,3 +88,41 @@ class OpenPrescribingHttpApi:
         response = self._session.get(api_url, params=params, **kwargs)
         response.raise_for_status()
         return response
+
+
+class DataProvider(Protocol):
+    def ccg_boundaries(self) -> CCGBoundaries:
+        ...
+
+    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> Iterable[CCGSpend]:
+        ...
+
+
+class HttpApiDataProvider(DataProvider):
+
+    """ """
+
+    def __init__(self, api: Optional[OpenPrescribingHttpApi] = None) -> None:
+        self._api = api if api is not None else OpenPrescribingHttpApi()
+
+    def ccg_boundaries(self) -> CCGBoundaries:
+        """Get the boundaries of all CCGs.
+
+        Returns:
+            Boundaries of the CCGs.
+
+        """
+        return self._api.query_org_location(api_params={"org_type": "ccg"})
+
+    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> Iterable[CCGSpend]:
+        """Prescription spending data for a chemical in a specified CCG.
+
+        Args:
+            chemical: Chemical code.
+            ccg: CCG code.
+
+        Returns:
+            The CCG's chemical prescription spending.
+
+        """
+        return self._api.query_spending_by_ccg(api_params={"code": chemical, "org": ccg})
