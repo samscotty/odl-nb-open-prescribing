@@ -70,18 +70,24 @@ class FeatureCollection(TypedDict):
 
 
 class CCGBoundaries:
-    def __init__(self, features: FeatureCollection):
-        self.crs = features["crs"]["properties"]["name"]
+    def __init__(self, feature_collection: FeatureCollection):
+        self.crs = feature_collection["crs"]["properties"]["name"]
+        self.feature_collection = feature_collection
+        # used to construct a new Feature Collection for a specific CCG
         self._code_to_feature_mapping = {
-            feature["properties"]["code"]: feature for feature in features["features"]
+            feature["properties"]["code"]: feature for feature in feature_collection["features"]
         }
 
     @property
     def features(self) -> list[Feature]:
         return list(self._code_to_feature_mapping.values())
 
-    def __getitem__(self, code: str) -> Feature:
-        return self._code_to_feature_mapping[code]
+    def __getitem__(self, code: str) -> FeatureCollection:
+        return FeatureCollection(
+            type=self.feature_collection["type"],
+            crs=self.feature_collection["crs"],
+            features=[self._code_to_feature_mapping[code]],
+        )
 
     def __iter__(self) -> Iterable[Feature]:
         return (feature for feature in self.features)

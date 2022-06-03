@@ -71,7 +71,7 @@ def test_ccg_boundaries_list_features():
 
 
 def test_ccg_boundaries_get_feature():
-    assert CCGBoundaries(FEATURE_COLLECTION_TEST_DATA)["DEADBEEF"] == FEATURE_TEST_DATA
+    assert CCGBoundaries(FEATURE_COLLECTION_TEST_DATA)["DEADBEEF"] == FEATURE_COLLECTION_TEST_DATA
 
 
 def test_ccg_boundaries_iterable():
