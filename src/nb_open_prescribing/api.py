@@ -1,4 +1,5 @@
 import logging
+from abc import abstractmethod
 from collections import ChainMap
 from typing import Iterable, MutableMapping, Optional, Protocol
 from urllib.parse import urljoin
@@ -91,6 +92,7 @@ class OpenPrescribingHttpApi:
 
 
 class DataProvider(Protocol):
+    @abstractmethod
     def ccg_boundaries(self) -> CCGBoundaries:
         """Get the boundaries of all CCGs.
 
@@ -100,6 +102,7 @@ class DataProvider(Protocol):
         """
         ...
 
+    @abstractmethod
     def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> Iterable[CCGSpend]:
         """Prescription spending data for a chemical in a specified CCG.
 
