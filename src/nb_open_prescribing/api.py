@@ -14,7 +14,7 @@ ApiParams = Optional[MutableMapping[str, str]]
 
 class OpenPrescribingHttpApi:
 
-    """Interface to Open Prescribing RESTful API service.
+    """Interface for Open Prescribing RESTful API service.
 
     Args:
         headers: Dictionary of HTTP headers to send with requests.
@@ -92,15 +92,31 @@ class OpenPrescribingHttpApi:
 
 class DataProvider(Protocol):
     def ccg_boundaries(self) -> CCGBoundaries:
+        """Get the boundaries of all CCGs.
+
+        Returns:
+            Boundaries of the CCGs.
+
+        """
         ...
 
     def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> Iterable[CCGSpend]:
+        """Prescription spending data for a chemical in a specified CCG.
+
+        Args:
+            chemical: Chemical code.
+            ccg: CCG code.
+
+        Returns:
+            The CCG's chemical prescription spending.
+
+        """
         ...
 
 
 class HttpApiDataProvider(DataProvider):
 
-    """ """
+    """Data provider for the Open Prescribing RESTful API."""
 
     def __init__(self, api: Optional[OpenPrescribingHttpApi] = None) -> None:
         self._api = api if api is not None else OpenPrescribingHttpApi()
