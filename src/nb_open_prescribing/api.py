@@ -10,7 +10,7 @@ from .model import CCGBoundaries, CCGSpend
 
 _SERVICE_BASE_URL = "https://openprescribing.net"
 
-ApiParams = Optional[MutableMapping[str, str]]
+ApiParams = MutableMapping[str, str]
 
 
 class OpenPrescribingHttpApi:
@@ -31,7 +31,7 @@ class OpenPrescribingHttpApi:
         self.logger = logging.getLogger(__name__)
         self.logger.debug(f"connected to {self._service_url}")
 
-    def query_org_location(self, api_params: ApiParams = None) -> CCGBoundaries:
+    def query_org_location(self, api_params: Optional[ApiParams] = None) -> CCGBoundaries:
         """Search for the boundaries of a CCG, or location of a practice, by code.
 
         Args:
@@ -47,7 +47,7 @@ class OpenPrescribingHttpApi:
         response = self._search(path="org_location", api_params=api_params)
         return CCGBoundaries(response.json())
 
-    def query_spending_by_ccg(self, api_params: ApiParams = None) -> list[CCGSpend]:
+    def query_spending_by_ccg(self, api_params: Optional[ApiParams] = None) -> list[CCGSpend]:
         """Queries the last five years of data and returns spending and items by CCG by month.
 
         Args:
@@ -60,12 +60,12 @@ class OpenPrescribingHttpApi:
         response = self._search(path="spending_by_ccg", api_params=api_params)
         return [CCGSpend.from_dict(x) for x in response.json()]
 
-    def query_spending_by_code(self, api_params: ApiParams = None):
+    def query_spending_by_code(self, api_params: Optional[ApiParams] = None):
         """Queries the last five years of data and returns total spending and items by month."""
         # return self._search(path="spending", api_params=api_params)
         raise NotImplementedError
 
-    def _search(self, path: str, api_params: ApiParams = None, **kwargs) -> Response:
+    def _search(self, path: str, api_params: Optional[ApiParams] = None, **kwargs) -> Response:
         """Perform GET request.
 
         Args:
