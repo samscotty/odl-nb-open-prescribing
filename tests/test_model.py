@@ -66,6 +66,13 @@ FEATURE_COLLECTION_TEST_DATA: FeatureCollection = {
 }
 
 
+def test_ccg_boundaries_get_crs_projection():
+    assert (
+        CCGBoundaries(FEATURE_COLLECTION_TEST_DATA).crs
+        == FEATURE_COLLECTION_TEST_DATA["crs"]["properties"]["name"]
+    )
+
+
 def test_ccg_boundaries_list_features():
     assert CCGBoundaries(FEATURE_COLLECTION_TEST_DATA).features == [FEATURE_TEST_DATA]
 
