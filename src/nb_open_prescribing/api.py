@@ -92,6 +92,14 @@ class OpenPrescribingHttpApi:
 
 
 class DataProvider(Protocol):
+
+    """Protocol class for CCG data providers.
+
+    Note:
+        Enables structural subtyping during typechecking.
+
+    """
+
     @abstractmethod
     def ccg_boundaries(self) -> CCGBoundaries:
         """Get the boundaries of all CCGs.
@@ -119,7 +127,12 @@ class DataProvider(Protocol):
 
 class HttpApiDataProvider(DataProvider):
 
-    """Data provider for the Open Prescribing RESTful API."""
+    """Data provider for the Open Prescribing RESTful API.
+
+    Args:
+        api: Open Prescribing RESTful API interface.
+
+    """
 
     def __init__(self, api: Optional[OpenPrescribingHttpApi] = None) -> None:
         self._api = api if api is not None else OpenPrescribingHttpApi()
