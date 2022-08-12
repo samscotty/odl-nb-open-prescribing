@@ -2,12 +2,11 @@ from collections import ChainMap
 from dataclasses import dataclass
 from typing import Any, MutableMapping, Optional
 
-from ipyleaflet import GeoJSON, Map, basemaps, projections
-from ipywidgets import VBox
-
-from nb_open_prescribing.model import CCGBoundaries
+from ipyleaflet import GeoJSON, Map, basemaps
+from ipywidgets import Label, VBox
 
 from .api import DataProvider, HttpApiDataProvider
+from .model import CCGBoundaries
 
 
 class OpenPrescribingDataExplorer(VBox):
@@ -53,17 +52,23 @@ class CCGIPyLeafletMap(VBox):
     ):
         super().__init__(**kwargs)
         self.boundaries = boundaries
+        self.ccgs = GeoJSON(
+            data=self.boundaries.feature_collection,
+            style={"opacity": 1, "fillOpacity": 0.1, "weight": 0},
+            hover_style={"fillColor": "white", "fillOpacity": 0.5},
+        )
         self._selected_ccg: Optional[CCGIPyLeafletLayer] = None
 
         # UI components
-        self.map = Map(
+        self.ipyleaflet_map = Map(
             # ensure certain attributes are used
             # and provide appropriate defaults for any left unspecified
-            ChainMap(
+            **ChainMap(
                 {
                     "basemap": basemaps.CartoDB.Positron,
-                    "crs": projections.get(self.boundaries.crs, projections.EPSG4326),
-                    # "fit_bounds": [[south, west], [north, east]],
+                    # NOTE ipyleaflet CRS EPSG:4326 issue
+                    # "crs": projections.get(self.boundaries.crs, projections.EPSG4326),
+                    "fit_bounds": [[49, -7], [57, 7]],
                 },
                 map_attrs if map_attrs is not None else {},
                 {
@@ -77,17 +82,17 @@ class CCGIPyLeafletMap(VBox):
                 },
             )
         )
-        self.ccgs = GeoJSON(
-            data=self.boundaries.feature_collection,
-            style={"opacity": 1, "fillOpacity": 0.1, "weight": 0},
-            hover_style={"fillColor": "white", "fillOpacity": 0.5},
-        )
+        # display selected CCG
+        self.label = Label()
 
         # add base CCG boundaries to the map
-        self.map.add_layer(self.ccgs)
+        self.ipyleaflet_map.add_layer(self.ccgs)
 
         # event handlers
         self.ccgs.on_click(self._click_handler)
+
+        # display UI
+        self.children = [self.ipyleaflet_map, self.label]
 
     @property
     def selected_ccg(self) -> Optional[CCGIPyLeafletLayer]:
@@ -97,10 +102,10 @@ class CCGIPyLeafletMap(VBox):
     @selected_ccg.setter
     def selected_ccg(self, ccg: CCGIPyLeafletLayer) -> None:
         if self._selected_ccg is not None:
-            self.map.remove_layer(self._selected_ccg.layer)
+            self.ipyleaflet_map.remove_layer(self._selected_ccg.layer)
 
         self._selected_ccg = ccg
-        self.map.add_layer(self._selected_ccg.layer)
+        self.ipyleaflet_map.add_layer(self._selected_ccg.layer)
 
     def select_ccg(self, code: str) -> None:
         """Highlight a CCG on the map.
@@ -123,8 +128,5 @@ class CCGIPyLeafletMap(VBox):
 
     def _click_handler(self, event=None, feature=None, properties=None) -> None:
         name, code = (properties.get(k) for k in ("name", "code"))
-        # workaround for ipyleaflet bug: click fires twice
-        # if self.label.value == name:
-        # return
         self.select_ccg(code)
-        # self.label.value = name
+        self.label.value = name
