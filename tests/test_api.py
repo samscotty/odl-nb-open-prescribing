@@ -7,6 +7,7 @@ from nb_open_prescribing.api import HttpApiDataProvider, OpenPrescribingHttpApi
 from nb_open_prescribing.model import (
     CCGBoundaries,
     CCGSpend,
+    DrugDetail,
     FeatureCollection,
     SpendByCCG,
 )
@@ -57,6 +58,51 @@ def test_query_spending_by_ccg(mock_query_api_json_response):
     response = api.query_spending_by_ccg()
     mock_query_api_json_response.assert_called_once()
     assert response == [CCGSpend.from_dict(o) for o in SPENDING_BY_CCG_TEST_JSON_DATA]
+
+
+DRUG_DETAILS_TEST_JSON_DATA = [
+    {
+        "type": "BNF chapter",
+        "id": "2",
+        "name": "Cardiovascular System",
+    },
+    {
+        "type": "BNF section",
+        "id": "2.12",
+        "name": "Lipid-regulating drugs",
+    },
+    {
+        "type": "BNF paragraph",
+        "id": "2.1.2",
+        "name": "Phosphodiesterase Type-3 inhibitors",
+    },
+    {
+        "type": "chemical",
+        "id": "021200000",
+        "name": "Other Lipid-Regulating Preps",
+        "section": "2.12: Lipid-regulating drugs",
+    },
+    {
+        "type": "product",
+        "id": "0212000F0AA",
+        "name": "Colestyramine (Lipid lowering)",
+        "is_generic": True,
+    },
+    {
+        "type": "product format",
+        "id": "190205500BCNSA0",
+        "name": "Avene XeraCalm A.D Lipid-Replenishing balm",
+        "is_generic": False,
+    },
+]
+
+
+@pytest.mark.json_response(DRUG_DETAILS_TEST_JSON_DATA)
+def test_query_drug_details(mock_query_api_json_response):
+    api = OpenPrescribingHttpApi()
+    response = api.query_drug_details()
+    mock_query_api_json_response.assert_called_once()
+    assert response == [DrugDetail.from_dict(o) for o in DRUG_DETAILS_TEST_JSON_DATA]
 
 
 @pytest.fixture
@@ -163,8 +209,18 @@ def test_http_api_data_provider_get_chemical_spending_for_ccg(mock_query_api_jso
     assert response == [CCGSpend.from_dict(o) for o in SPENDING_BY_CCG_TEST_JSON_DATA]
 
 
+@pytest.mark.json_response(DRUG_DETAILS_TEST_JSON_DATA)
+def test_http_api_data_provider_get_drug_details(mock_query_api_json_response):
+    provider = HttpApiDataProvider()
+    response = provider.drug_details(query="lipid", exact=False)
+    mock_query_api_json_response.assert_called_once_with(
+        path="bnf_code", api_params={"q": "lipid", "exact": "false"}
+    )
+    assert response == [DrugDetail.from_dict(o) for o in DRUG_DETAILS_TEST_JSON_DATA]
+
+
 @pytest.mark.json_response(FEATURE_COLLECTION_TEST_JSON_DATA)
-def test_http_api_data_provider_gets_ccg_boundaries(mock_query_api_json_response):
+def test_http_api_data_provider_get_ccg_boundaries(mock_query_api_json_response):
     provider = HttpApiDataProvider()
     provider.ccg_boundaries()
     mock_query_api_json_response.assert_called_once_with(

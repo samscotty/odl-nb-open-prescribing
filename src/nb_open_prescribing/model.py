@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Iterable, Optional, TypedDict, Union
+from typing import Iterable, Literal, Optional, TypedDict, Union
 
 
 class SpendByCCG(TypedDict):
@@ -31,6 +31,40 @@ class CCGSpend:
             row_id=data["row_id"],
             row_name=data["row_name"],
         )
+
+
+BNF_CODE_TYPE = Literal[
+    "BNF chapter", "BNF section", "BNF paragraph", "chemical", "product", "product format"
+]
+
+
+class BNFCode(TypedDict):
+    type: BNF_CODE_TYPE
+    id: str
+    name: str
+
+
+class Chemical(BNFCode):
+    section: str
+
+
+class Product(BNFCode):
+    is_generic: bool
+
+
+# possible API responses from BNF search
+BNF = Union[BNFCode, Chemical, Product]
+
+
+@dataclass(frozen=True)
+class DrugDetail:
+    type: BNF_CODE_TYPE  # NOTE maybe just `str` ?
+    id: str
+    name: str
+
+    @classmethod
+    def from_dict(cls, data: BNF):
+        return cls(type=data["type"], id=data["id"], name=data["name"])
 
 
 class FeatureProperties(TypedDict):

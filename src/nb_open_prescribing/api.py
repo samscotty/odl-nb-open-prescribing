@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 
 from requests import Response, Session
 
-from .model import CCGBoundaries, CCGSpend
+from .model import CCGBoundaries, CCGSpend, DrugDetail
 
 _SERVICE_BASE_URL = "https://openprescribing.net"
 
@@ -64,6 +64,11 @@ class OpenPrescribingHttpApi:
         """Queries the last five years of data and returns total spending and items by month."""
         # return self._search(path="spending", api_params=api_params)
         raise NotImplementedError
+
+    def query_drug_details(self, api_params: Optional[ApiParams] = None) -> list[DrugDetail]:
+        """Queries the official name and code of BNF sections, chemicals and presentations."""
+        response = self._search(path="bnf_code", api_params=api_params)
+        return [DrugDetail.from_dict(x) for x in response.json()]
 
     def _search(self, path: str, api_params: Optional[ApiParams] = None, **kwargs) -> Response:
         """Perform GET request.
@@ -124,6 +129,20 @@ class DataProvider(Protocol):
         """
         ...
 
+    @abstractmethod
+    def drug_details(self, query: str, exact: bool = False) -> Iterable[DrugDetail]:
+        """All BNF sections, chemicals and presentations matching a name (case-insensitive) or a code.
+
+        Args:
+            query: Query string.
+            exact: Exactly match a name or code.
+
+        Returns:
+            Official name and code of matching BNF sections, chemicals and presentations.
+
+        """
+        ...
+
 
 class HttpApiDataProvider(DataProvider):
 
@@ -158,3 +177,18 @@ class HttpApiDataProvider(DataProvider):
 
         """
         return self._api.query_spending_by_ccg(api_params={"code": chemical, "org": ccg})
+
+    def drug_details(self, query: str, exact: bool = False) -> Iterable[DrugDetail]:
+        """All BNF sections, chemicals and presentations matching a name (case-insensitive) or a code.
+
+        Args:
+            query: Query string.
+            exact: Exactly match a name or code.
+
+        Returns:
+            Official name and code of matching BNF sections, chemicals and presentations.
+
+        """
+        return self._api.query_drug_details(
+            api_params={"q": query, "exact": "true" if exact else "false"}
+        )
