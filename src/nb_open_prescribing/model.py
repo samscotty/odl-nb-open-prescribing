@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Iterable, Literal, Optional, TypedDict, Union
@@ -105,7 +106,7 @@ class FeatureCollection(TypedDict):
 
 class CCGBoundaries:
     def __init__(self, feature_collection: FeatureCollection):
-        self.feature_collection = feature_collection
+        self.feature_collection = deepcopy(feature_collection)
         # used to construct a new Feature Collection for a specific CCG
         self._code_to_feature_mapping = {
             feature["properties"]["code"]: feature for feature in feature_collection["features"]
