@@ -9,10 +9,10 @@ from nb_open_prescribing.model import (
     CCGSpend,
     DrugDetail,
     FeatureCollection,
-    SpendByCCG,
+    SpendingByCCG,
 )
 
-SPENDING_BY_CCG_TEST_JSON_DATA: list[SpendByCCG] = [
+SPENDING_BY_CCG_TEST_JSON_DATA: list[SpendingByCCG] = [
     {
         "items": 600,
         "quantity": 10000.0,

@@ -12,10 +12,10 @@ from nb_open_prescribing.model import (
     Feature,
     FeatureCollection,
     Product,
-    SpendByCCG,
+    SpendingByCCG,
 )
 
-SPEND_BY_CCG_TEST_DATA: SpendByCCG = {
+SPEND_BY_CCG_TEST_DATA: SpendingByCCG = {
     "items": 100,
     "quantity": 10000.0,
     "actual_cost": 12345.67,

@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Iterable, Literal, Optional, TypedDict, Union
 
 
-class SpendByCCG(TypedDict):
+class SpendingByCCG(TypedDict):
     items: int
     quantity: float
     actual_cost: float
@@ -23,7 +23,7 @@ class CCGSpend:
     row_name: str
 
     @classmethod
-    def from_dict(cls, data: SpendByCCG):
+    def from_dict(cls, data: SpendingByCCG):
         return cls(
             items=data["items"],
             quantity=data["quantity"],
@@ -54,17 +54,17 @@ class Product(BNFCode):
 
 
 # possible API responses from BNF search
-BNF = Union[BNFCode, Chemical, Product]
+BNF_CODES_AND_NAMES = Union[BNFCode, Chemical, Product]
 
 
 @dataclass(frozen=True)
 class DrugDetail:
-    type: BNF_CODE_TYPE  # NOTE maybe just `str` ?
+    type: BNF_CODE_TYPE
     id: str
     name: str
 
     @classmethod
-    def from_dict(cls, data: BNF):
+    def from_dict(cls, data: BNF_CODES_AND_NAMES):
         return cls(type=data["type"], id=data["id"], name=data["name"])
 
 
@@ -129,6 +129,3 @@ class CCGBoundaries:
 
     def __iter__(self) -> Iterable[Feature]:
         return (feature for feature in self.features)
-
-
-ApiJsonResponse = Union[FeatureCollection, list[SpendByCCG]]
