@@ -34,13 +34,13 @@ class CCGSpend:
         )
 
 
-BNF_CODE_TYPE = Literal[
+BnfCodeType = Literal[
     "BNF chapter", "BNF section", "BNF paragraph", "chemical", "product", "product format"
 ]
 
 
 class BNFCode(TypedDict):
-    type: BNF_CODE_TYPE
+    type: BnfCodeType
     id: str
     name: str
 
@@ -54,17 +54,17 @@ class Product(BNFCode):
 
 
 # possible API responses from BNF search
-BNF_CODES_AND_NAMES = Union[BNFCode, Chemical, Product]
+BnfCodeOrName = Union[BNFCode, Chemical, Product]
 
 
 @dataclass(frozen=True)
 class DrugDetail:
-    type: BNF_CODE_TYPE
+    type: BnfCodeType
     id: str
     name: str
 
     @classmethod
-    def from_dict(cls, data: BNF_CODES_AND_NAMES):
+    def from_dict(cls, data: BnfCodeOrName):
         return cls(type=data["type"], id=data["id"], name=data["name"])
 
 
