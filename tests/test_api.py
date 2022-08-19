@@ -105,17 +105,6 @@ def test_query_drug_details(mock_query_api_json_response):
     assert response == [DrugDetail.from_dict(o) for o in DRUG_DETAILS_TEST_JSON_DATA]
 
 
-@pytest.fixture
-def mock_query_org_location_api_response(mocker, boundaries_json):
-    response = mocker.Mock()
-    response.json = mocker.Mock(return_value=boundaries_json)
-    response.status_code = HTTPStatus
-    yield mocker.patch(
-        "nb_open_prescribing.api.OpenPrescribingHttpApi._search",
-        return_value=response,
-    )
-
-
 FEATURE_COLLECTION_TEST_JSON_DATA: FeatureCollection = {
     "type": "FeatureCollection",
     "crs": {"type": "name", "properties": {"name": "ABCD:1234"}},
