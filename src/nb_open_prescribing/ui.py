@@ -84,7 +84,7 @@ class OpenPrescribingDataExplorer(VBox):
         """Handler for the chemical selector UI.
 
         Args:
-            change: ... of the observed change.
+            change: Dictionary of the observed ipywidget change.
 
         Note:
             A rate limiter decorator is applied to the method to prevent excessive requests
