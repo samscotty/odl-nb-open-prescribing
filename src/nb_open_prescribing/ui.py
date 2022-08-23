@@ -2,11 +2,26 @@ from collections import ChainMap
 from dataclasses import dataclass
 from typing import Any, MutableMapping, Optional
 
+import matplotlib.pyplot as plt
 from ipyleaflet import GeoJSON, Map, basemaps
-from ipywidgets import Label, VBox
+from ipywidgets import (
+    HTML,
+    Accordion,
+    Button,
+    Combobox,
+    Dropdown,
+    Label,
+    Layout,
+    Output,
+    VBox,
+)
+from matplotlib.ticker import FuncFormatter
 
 from .api import DataProvider, HttpApiDataProvider
-from .model import CCGBoundaries
+from .model import CCGBoundaries, CCGSpend
+from .util import RateLimiter
+
+api_rate_limiter = RateLimiter()
 
 
 class OpenPrescribingDataExplorer(VBox):
@@ -16,12 +31,104 @@ class OpenPrescribingDataExplorer(VBox):
     def __init__(self, data_provider: Optional[DataProvider] = None, **kwargs):
         super().__init__(**kwargs)
         self.data_provider = data_provider if data_provider is not None else HttpApiDataProvider()
+        #
+        self._select_options: dict[str, str] = {}
+        self._chemical: Optional[str] = None
 
         # UI components
+        self.title = HTML(
+            "<h1>Search CCG Prescribing Data</h1>"
+            "<p>Use the map to select a CCG and the search box to find a chemical/product.</p>"
+        )
         self.map = CCGIPyLeafletMap(self.data_provider.ccg_boundaries())
+        self.chemical_selector = Combobox(
+            ensure_option=False,
+            placeholder="Add names or codes e.g. Cerazette",
+            layout=Layout(width="100%"),
+        )
+        self.search_button = Button(
+            description="Show me the data",
+            button_style="info",
+            layout=Layout(height="35px", margin="10px 1px"),
+            disabled=True,
+        )
+        self.status_message = Label(layout=Layout(margin="0px 1px 10px"))
+        self.plotter = Plotter()
+
+        # event handlers
+        self.chemical_selector.observe(self._select_handler, "value")
+        self.search_button.on_click(self._click_handler)
 
         # add components to the display
-        self.children = [self.map]
+        self.children = [
+            self.title,
+            self.map,
+            self.chemical_selector,
+            self.search_button,
+            self.status_message,
+            self.plotter,
+        ]
+
+    @property
+    def chemical(self) -> Optional[str]:
+        return self._chemical
+
+    @property
+    def ccg(self) -> Optional[str]:
+        if self.map.selected_ccg is None:
+            return None
+        return self.map.selected_ccg.code
+
+    @api_rate_limiter
+    def _select_handler(self, change) -> None:
+        """Handler for the chemical selector UI.
+
+        Args:
+            change: ... of the observed change.
+
+        Note:
+            A rate limiter decorator is applied to the method to prevent excessive requests
+            to the API.
+
+        """
+        user_entered_input = str(change["new"])
+        # require a minimum of 3 characters before displaying any results;
+        if len(user_entered_input.strip()) < 3:
+            self.search_button.disabled = True
+            return None
+        # remove other options if one has been selected
+        elif self.chemical_selector.value in self.chemical_selector.options:
+            self.search_button.disabled = False
+            self._chemical = self._select_options[self.chemical_selector.value]
+            self._select_options = {}
+        # request matching chemical/products from API
+        else:
+            self.search_button.disabled = True
+            self._select_options = {
+                f"{o.type}: {o.name} ({o.id})": o.id
+                for o in self.data_provider.drug_details(query=user_entered_input, exact=False)
+                if o.type in ("chemical", "product")
+            }
+        # update possible matches
+        self.chemical_selector.options = [o for o in self._select_options]
+
+    def _click_handler(self, _) -> None:
+        """ """
+        self.search_button.disabled = True
+        if self.chemical is not None and self.ccg is not None:
+            self.status_message.value = "Fetching the data..."
+            data = self.data_provider.chemical_spending_for_ccg(
+                chemical=self.chemical, ccg=self.ccg
+            )
+            # display the data
+            self.plotter.data = data
+            self.plotter.set_title(f"{self.map.label.value} – {self.chemical_selector.value}")
+            self.status_message.value = f"Found {len(data)} results."
+        else:
+            self.status_message.value = (
+                "Nothing to search for, please select a CCG and a product/chemical."
+            )
+        self.search_button.disabled = False
 
 
 @dataclass
@@ -49,7 +156,7 @@ class CCGIPyLeafletMap(VBox):
         boundaries: CCGBoundaries,
         map_attrs: Optional[MutableMapping[str, Any]] = None,
         **kwargs,
-    ):
+    ) -> None:
         super().__init__(**kwargs)
         self.boundaries = boundaries
         self.ccgs = GeoJSON(
@@ -130,3 +237,137 @@ class CCGIPyLeafletMap(VBox):
         name, code = (properties.get(k) for k in ("name", "code"))
         self.select_ccg(code)
         self.label.value = name
+
+
+class FAQ(VBox):
+
+    """ """
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        faq = HTML(
+            """
+            <h2>What are prescription <i>Items</i>?</h2>
+            <p>
+                Items counts the number of times a medicine has been prescribed.
+                It says nothing about how much of it has been prescribed (for that see quantity)
+                as some presciptions will be for many weeks’ worth of treatment
+                while others will be much smaller.
+            </p>
+            <h2>What does <i>Quantity</i> mean?</h2>
+            <p>
+                Quantity is the total amount of a medicine that has been prescribed,
+                but the units used depend on the particular form the medicine is in:
+                <ul>
+                    <li>
+                        Where the formulation is tablet, capsule, ampoule, vial etc
+                        the quantity will be the number of tablets, capsules, ampoules, vials etc
+                    </li>
+                    <li>
+                        Where the formulation is a liquid the quantity will bethe number of
+                        millilitres
+                    </li>
+                    <li>
+                        Where the formulation is a solid form (eg. cream, gel, ointment)
+                        the quantity will be the number of grams
+                    </li>
+                    <li>
+                        Where the formulation is inhalers the quantity is usually
+                        the number of inhalers
+                        (but there are occasionally inconsistencies here so exercise caution
+                        when analysing this data)
+                    </li>
+                </ul>
+            </p>
+            <p>
+                Care must be taken when adding together quantities.
+                Obviously quantities cannot be added across units.
+                But even within a given unit it may not make sense to add together quantities
+                of different preparations with different strengths and formulations.
+            </p>
+            <h2>What is <i>Actual Cost</i>?</h2>
+            <p>
+                Actual cost is the estimated cost to the NHS of supplying a medicine.
+                The Drug Tariff and other price lists specify a Net Ingredient Cost (NIC)
+                for a drug, but pharmacists usually receive a discount on this price.
+                Additionally they receive a "container allowance" each time they dispense
+                a prescription. The actual cost is estimated from the net ingredient cost
+                by subtracting the average percentage discount received by pharmacists
+                in the previous month and adding in the cost of the container allowance.
+            </p>
+            </br>
+            """
+        )
+        accordion = Accordion([faq], selected_index=None)
+        accordion.set_title(0, "FAQ")
+
+        self.children = [accordion]
+
+
+class Plotter(VBox):
+
+    """ """
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._data: list[CCGSpend] = []
+
+        # define widgets
+        self.faq = FAQ()
+        self.yaxis = Dropdown(
+            options=[
+                ("Items", "items"),
+                ("Quantity", "quantity"),
+                ("Actual Cost (£)", "actual_cost"),
+            ]
+        )
+        self.output = Output()
+
+        # matplotlib figure/axis
+        with self.output:
+            # prevent duplicate render
+            plt.ioff()
+            self.fig, self.ax = plt.subplots(figsize=(9, 5), constrained_layout=True)
+            self.ax.set_xlabel("Date")
+            plt.ion()
+            plt.show()
+        self.ax.grid(c="#eee")
+        self.fig.canvas.toolbar_position = "bottom"
+
+        # event handlers
+        self.yaxis.observe(self._change_handler, "value")
+
+        self.hide()
+        self.children = [self.faq, self.yaxis, self.output]
+
+    @property
+    def data(self) -> list[CCGSpend]:
+        return list(self._data)
+
+    @data.setter
+    def data(self, new_data: list[CCGSpend]) -> None:
+        if new_data:
+            self.show(new_data)
+        else:
+            self.hide()
+            pass
+        self._data = new_data
+
+    def show(self, data: list[CCGSpend], yaxis: Optional[str] = None) -> None:
+        x, y = zip(*((xy.date, getattr(xy, yaxis or self.yaxis.value)) for xy in data))
+        with self.output:
+            self.ax.clear()
+            self.ax.plot(x, y, ".-")
+        self.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, y: f"{x:,.0f}"))
+        self.ax.set_ylabel([x[0] for x in self.yaxis.options if x[1] == self.yaxis.value][0])
+        self.ax.grid(c="#eee")
+        self.layout.display = None
+
+    def hide(self) -> None:
+        self.layout.display = "none"
+
+    def set_title(self, title: str) -> None:
+        self.fig.canvas.manager.set_window_title(title)
+
+    def _change_handler(self, change) -> None:
+        self.show(self._data, yaxis=change["new"])

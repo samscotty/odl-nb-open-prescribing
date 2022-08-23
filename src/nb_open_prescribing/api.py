@@ -1,7 +1,7 @@
 import logging
 from abc import abstractmethod
 from collections import ChainMap
-from typing import Iterable, MutableMapping, Optional, Protocol
+from typing import MutableMapping, Optional, Protocol
 from urllib.parse import urljoin
 
 from requests import Response, Session
@@ -116,7 +116,7 @@ class DataProvider(Protocol):
         ...
 
     @abstractmethod
-    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> Iterable[CCGSpend]:
+    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> list[CCGSpend]:
         """Prescription spending data for a chemical in a specified CCG.
 
         Args:
@@ -130,7 +130,7 @@ class DataProvider(Protocol):
         ...
 
     @abstractmethod
-    def drug_details(self, query: str, exact: bool) -> Iterable[DrugDetail]:
+    def drug_details(self, query: str, exact: bool) -> list[DrugDetail]:
         """All BNF sections, chemicals and presentations matching a name (case-insensitive) or a code.
 
         Args:
@@ -165,7 +165,7 @@ class HttpApiDataProvider(DataProvider):
         """
         return self._api.query_org_location(api_params={"org_type": "ccg"})
 
-    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> Iterable[CCGSpend]:
+    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> list[CCGSpend]:
         """Prescription spending data for a chemical in a specified CCG.
 
         Args:
@@ -178,7 +178,7 @@ class HttpApiDataProvider(DataProvider):
         """
         return self._api.query_spending_by_ccg(api_params={"code": chemical, "org": ccg})
 
-    def drug_details(self, query: str, exact: bool = False) -> Iterable[DrugDetail]:
+    def drug_details(self, query: str, exact: bool = False) -> list[DrugDetail]:
         """All BNF sections, chemicals and presentations matching a name (case-insensitive) or a code.
 
         Args:
