@@ -314,7 +314,7 @@ class Plotter(VBox):
 
         # define widgets
         self.faq = FAQ()
-        self.yaxis = Dropdown(
+        self.yvar_selector = Dropdown(
             description="Y-Axis",
             options=[
                 ("Items", "items"),
@@ -336,10 +336,10 @@ class Plotter(VBox):
         self.fig.canvas.toolbar_position = "bottom"
 
         # event handlers
-        self.yaxis.observe(self._change_handler, "value")
+        self.yvar_selector.observe(self._change_handler, "value")
 
         self.hide()
-        self.children = [self.faq, self.yaxis, self.output]
+        self.children = [self.faq, self.yvar_selector, self.output]
 
     @property
     def data(self) -> list[CCGSpend]:
@@ -353,13 +353,15 @@ class Plotter(VBox):
             self.hide()
         self._data = new_data
 
-    def show(self, data: list[CCGSpend], yaxis: Optional[str] = None) -> None:
-        x, y = zip(*((o.date, getattr(o, yaxis or self.yaxis.value)) for o in data))
+    def show(self, data: list[CCGSpend], yvar: Optional[str] = None) -> None:
+        x, y = zip(*((o.date, getattr(o, yvar or self.yvar_selector.value)) for o in data))
         with self.output:
             self.ax.clear()
             self.ax.plot(x, y, ".-")
         self.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:,.0f}"))
-        self.ax.set_ylabel([x[0] for x in self.yaxis.options if x[1] == self.yaxis.value][0])
+        self.ax.set_ylabel(
+            [o[0] for o in self.yvar_selector.options if o[1] == self.yvar_selector.value][0]
+        )
         self.ax.grid(c="#eee")
         self.layout.display = None
 
@@ -370,4 +372,4 @@ class Plotter(VBox):
         self.fig.canvas.manager.set_window_title(title)
 
     def _change_handler(self, change) -> None:
-        self.show(self._data, yaxis=change["new"])
+        self.show(self._data, yvar=change["new"])
