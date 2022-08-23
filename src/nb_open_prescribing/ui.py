@@ -351,7 +351,6 @@ class Plotter(VBox):
             self.show(new_data)
         else:
             self.hide()
-            pass
         self._data = new_data
 
     def show(self, data: list[CCGSpend], yaxis: Optional[str] = None) -> None:
