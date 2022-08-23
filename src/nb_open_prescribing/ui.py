@@ -354,11 +354,11 @@ class Plotter(VBox):
         self._data = new_data
 
     def show(self, data: list[CCGSpend], yaxis: Optional[str] = None) -> None:
-        x, y = zip(*((xy.date, getattr(xy, yaxis or self.yaxis.value)) for xy in data))
+        x, y = zip(*((o.date, getattr(o, yaxis or self.yaxis.value)) for o in data))
         with self.output:
             self.ax.clear()
             self.ax.plot(x, y, ".-")
-        self.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, y: f"{x:,.0f}"))
+        self.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:,.0f}"))
         self.ax.set_ylabel([x[0] for x in self.yaxis.options if x[1] == self.yaxis.value][0])
         self.ax.grid(c="#eee")
         self.layout.display = None
