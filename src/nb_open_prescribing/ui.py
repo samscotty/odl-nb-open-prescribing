@@ -315,11 +315,12 @@ class Plotter(VBox):
         # define widgets
         self.faq = FAQ()
         self.yaxis = Dropdown(
+            description="Y-Axis",
             options=[
                 ("Items", "items"),
                 ("Quantity", "quantity"),
                 ("Actual Cost (£)", "actual_cost"),
-            ]
+            ],
         )
         self.output = Output()
 
