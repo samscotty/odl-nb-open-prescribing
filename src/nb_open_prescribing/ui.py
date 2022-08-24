@@ -92,16 +92,16 @@ class OpenPrescribingDataExplorer(VBox):
 
         """
         user_entered_input = str(change["new"])
-        # require a minimum of 3 characters before displaying any results;
+        # require a minimum of 3 characters before displaying any results
         if len(user_entered_input.strip()) < 3:
             self.search_button.disabled = True
-            return None
-        # remove other options if one has been selected
+            self._select_options = {}
+        # if selection has been made, remove other options
         elif self.chemical_selector.value in self.chemical_selector.options:
             self.search_button.disabled = False
             self._chemical = self._select_options[self.chemical_selector.value]
             self._select_options = {}
-        # request matching chemical/products from API
+        # otherwise query API for more possible matches
         else:
             self.search_button.disabled = True
             self._select_options = {
