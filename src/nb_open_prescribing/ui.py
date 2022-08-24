@@ -353,7 +353,7 @@ class Plotter(VBox):
             self.show(new_data)
         else:
             self.hide()
-        self._data = new_data
+        self._data = list(new_data)
 
     def show(self, data: list[CCGSpend]) -> None:
         x, y = zip(*((o.date, getattr(o, self.yvar_selector.value)) for o in data))
