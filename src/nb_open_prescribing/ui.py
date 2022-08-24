@@ -26,12 +26,18 @@ api_rate_limiter = RateLimiter()
 
 class OpenPrescribingDataExplorer(VBox):
 
-    """ """
+    """UI for exploring Open Prescribing CCG spend data.
+
+    Args:
+        data_provider: Provider for Open Prescribing data.
+        **kwargs: Keyword arguments to pass to the ipywidget container.
+
+    """
 
     def __init__(self, data_provider: Optional[DataProvider] = None, **kwargs):
         super().__init__(**kwargs)
         self.data_provider = data_provider if data_provider is not None else HttpApiDataProvider()
-        #
+        # active search box selections
         self._select_options: dict[str, str] = {}
         self._chemical: Optional[str] = None
 
@@ -53,7 +59,7 @@ class OpenPrescribingDataExplorer(VBox):
             disabled=True,
         )
         self.status_message = Label(layout=Layout(margin="0px 1px 10px"))
-        self.plotter = Plotter()
+        self.plotter = SpendPlotter()
 
         # event handlers
         self.chemical_selector.observe(self._select_handler, "value")
@@ -71,10 +77,12 @@ class OpenPrescribingDataExplorer(VBox):
 
     @property
     def chemical(self) -> Optional[str]:
+        """Selected drug."""
         return self._chemical
 
     @property
     def ccg(self) -> Optional[str]:
+        """Selected CCG."""
         if self.map.selected_ccg is None:
             return None
         return self.map.selected_ccg.code
@@ -84,7 +92,7 @@ class OpenPrescribingDataExplorer(VBox):
         """Handler for the chemical selector UI.
 
         Args:
-            change: Dictionary of the observed ipywidget change.
+            change: The observed ipywidget change.
 
         Note:
             A rate limiter decorator is applied to the method to prevent excessive requests
@@ -113,7 +121,7 @@ class OpenPrescribingDataExplorer(VBox):
         self.chemical_selector.options = [o for o in self._select_options]
 
     def _click_handler(self, _) -> None:
-        """ """
+        """Handler for the search button UI."""
         # ensure both fields are set
         if self.chemical is None or self.ccg is None:
             self.status_message.value = (
@@ -203,7 +211,7 @@ class CCGIPyLeafletMap(VBox):
 
     @property
     def selected_ccg(self) -> Optional[CCGIPyLeafletLayer]:
-        """The currently highlighted CCG layer."""
+        """Highlighted CCG layer."""
         return self._selected_ccg
 
     @selected_ccg.setter
@@ -234,14 +242,109 @@ class CCGIPyLeafletMap(VBox):
         self.selected_ccg = CCGIPyLeafletLayer(code, layer)
 
     def _click_handler(self, event=None, feature=None, properties=None) -> None:
+        """Handler for the ipyleaflet layers."""
         name, code = (properties.get(k) for k in ("name", "code"))
         self.select_ccg(code)
         self.label.value = name
 
 
+class SpendPlotter(VBox):
+
+    """UI for plotting Open Prescribing CCG spend data.
+
+    Args:
+        **kwargs: Keyword arguments to pass to the ipywidget container.
+
+    """
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._data: list[CCGSpend] = []
+        self._yvar_field_to_label_mapping = {
+            "items": "Items",
+            "quantity": "Quantity",
+            "actual_cost": "Actual Cost (£)",
+        }
+
+        # define widgets
+        self.faq = FAQ()
+        self.yvar_selector = Dropdown(
+            description="Y-Axis",
+            options=[(v, k) for k, v in self._yvar_field_to_label_mapping.items()],
+            layout=Layout(margin="15px 1px 10px"),
+        )
+        self.output = Output()
+
+        # matplotlib figure/axis
+        with self.output:
+            # prevent duplicate render
+            plt.ioff()
+            self.fig, self.ax = plt.subplots(figsize=(9, 5), constrained_layout=True)
+            self.ax.set_xlabel("Date")
+            plt.ion()
+            plt.show()
+        self.ax.grid(c="#eee")
+        self.fig.canvas.toolbar_position = "bottom"
+
+        # event handlers
+        self.yvar_selector.observe(self._change_handler, "value")
+
+        # do not display UI components on instantiation
+        self.hide()
+
+        self.children = [self.faq, self.yvar_selector, self.output]
+
+    @property
+    def data(self) -> list[CCGSpend]:
+        """CCG spend data."""
+        return list(self._data)
+
+    @data.setter
+    def data(self, new_data: list[CCGSpend]) -> None:
+        if new_data:
+            self.show(new_data)
+        else:
+            self.hide()
+        self._data = list(new_data)
+
+    def show(self, data: list[CCGSpend]) -> None:
+        """Render the plot with new data and display the UI components.
+
+        Args:
+            data: CCG spend data.
+
+        """
+        x, y = zip(*((o.date, getattr(o, self.yvar_selector.value)) for o in data))
+        with self.output:
+            self.ax.clear()
+            self.ax.plot(x, y, ".-")
+        # prettify the tick labels
+        self.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:,.0f}"))
+        self.ax.set_ylabel(self._yvar_field_to_label_mapping[self.yvar_selector.value])
+        self.ax.grid(c="#eee")
+        self.layout.display = None
+
+    def hide(self) -> None:
+        """Hide the UI components."""
+        self.layout.display = "none"
+
+    def set_title(self, title: str) -> None:
+        """Display a title on the current figure."""
+        self.fig.canvas.manager.set_window_title(title)
+
+    def _change_handler(self, _) -> None:
+        """Handler for the dropdown selector."""
+        self.show(self._data)
+
+
 class FAQ(VBox):
 
-    """ """
+    """Expandable UI box displaying a glossary of the prescribing dataset terms.
+
+    Args:
+        **kwargs: Keyword arguments to pass to the ipywidget container.
+
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -302,74 +405,3 @@ class FAQ(VBox):
         accordion.set_title(0, "FAQ")
 
         self.children = [accordion]
-
-
-class Plotter(VBox):
-
-    """ """
-
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self._data: list[CCGSpend] = []
-        self._yvar_field_to_label_mapping = {
-            "items": "Items",
-            "quantity": "Quantity",
-            "actual_cost": "Actual Cost (£)",
-        }
-
-        # define widgets
-        self.faq = FAQ()
-        self.yvar_selector = Dropdown(
-            description="Y-Axis",
-            options=[(v, k) for k, v in self._yvar_field_to_label_mapping.items()],
-            layout=Layout(margin="15px 1px 10px"),
-        )
-        self.output = Output()
-
-        # matplotlib figure/axis
-        with self.output:
-            # prevent duplicate render
-            plt.ioff()
-            self.fig, self.ax = plt.subplots(figsize=(9, 5), constrained_layout=True)
-            self.ax.set_xlabel("Date")
-            plt.ion()
-            plt.show()
-        self.ax.grid(c="#eee")
-        self.fig.canvas.toolbar_position = "bottom"
-
-        # event handlers
-        self.yvar_selector.observe(self._change_handler, "value")
-
-        self.hide()
-        self.children = [self.faq, self.yvar_selector, self.output]
-
-    @property
-    def data(self) -> list[CCGSpend]:
-        return list(self._data)
-
-    @data.setter
-    def data(self, new_data: list[CCGSpend]) -> None:
-        if new_data:
-            self.show(new_data)
-        else:
-            self.hide()
-        self._data = list(new_data)
-
-    def show(self, data: list[CCGSpend]) -> None:
-        x, y = zip(*((o.date, getattr(o, self.yvar_selector.value)) for o in data))
-        with self.output:
-            self.ax.clear()
-            self.ax.plot(x, y, ".-")
-        self.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:,.0f}"))
-        self.ax.set_ylabel(self._yvar_field_to_label_mapping[self.yvar_selector.value])
-        self.ax.grid(c="#eee")
-        self.layout.display = None
-
-    def hide(self) -> None:
-        self.layout.display = "none"
-
-    def set_title(self, title: str) -> None:
-        self.fig.canvas.manager.set_window_title(title)
-
-    def _change_handler(self, _) -> None:
-        self.show(self._data)
