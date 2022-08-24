@@ -311,16 +311,17 @@ class Plotter(VBox):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._data: list[CCGSpend] = []
+        self._yvar_field_to_label_mapping = {
+            "items": "Items",
+            "quantity": "Quantity",
+            "actual_cost": "Actual Cost (£)",
+        }
 
         # define widgets
         self.faq = FAQ()
         self.yvar_selector = Dropdown(
             description="Y-Axis",
-            options=[
-                ("Items", "items"),
-                ("Quantity", "quantity"),
-                ("Actual Cost (£)", "actual_cost"),
-            ],
+            options=[(v, k) for k, v in self._yvar_field_to_label_mapping.items()],
         )
         self.output = Output()
 
@@ -353,15 +354,13 @@ class Plotter(VBox):
             self.hide()
         self._data = new_data
 
-    def show(self, data: list[CCGSpend], yvar: Optional[str] = None) -> None:
-        x, y = zip(*((o.date, getattr(o, yvar or self.yvar_selector.value)) for o in data))
+    def show(self, data: list[CCGSpend]) -> None:
+        x, y = zip(*((o.date, getattr(o, self.yvar_selector.value)) for o in data))
         with self.output:
             self.ax.clear()
             self.ax.plot(x, y, ".-")
         self.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:,.0f}"))
-        self.ax.set_ylabel(
-            [o[0] for o in self.yvar_selector.options if o[1] == self.yvar_selector.value][0]
-        )
+        self.ax.set_ylabel(self._yvar_field_to_label_mapping[self.yvar_selector.value])
         self.ax.grid(c="#eee")
         self.layout.display = None
 
@@ -371,5 +370,5 @@ class Plotter(VBox):
     def set_title(self, title: str) -> None:
         self.fig.canvas.manager.set_window_title(title)
 
-    def _change_handler(self, change) -> None:
-        self.show(self._data, yvar=change["new"])
+    def _change_handler(self, _) -> None:
+        self.show(self._data)
