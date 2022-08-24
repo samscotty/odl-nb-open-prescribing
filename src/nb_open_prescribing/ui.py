@@ -114,20 +114,20 @@ class OpenPrescribingDataExplorer(VBox):
 
     def _click_handler(self, _) -> None:
         """ """
-        self.search_button.disabled = True
-        if self.chemical is not None and self.ccg is not None:
-            self.status_message.value = "Fetching the data..."
-            data = self.data_provider.chemical_spending_for_ccg(
-                chemical=self.chemical, ccg=self.ccg
-            )
-            # display the data
-            self.plotter.data = data
-            self.plotter.set_title(f"{self.map.label.value} – {self.chemical_selector.value}")
-            self.status_message.value = f"Found {len(data)} results."
-        else:
+        # ensure both fields are set
+        if self.chemical is None or self.ccg is None:
             self.status_message.value = (
                 "Nothing to search for, please select a CCG and a product/chemical."
             )
+            return None
+
+        self.search_button.disabled = True
+        self.status_message.value = "Fetching the data..."
+        data = self.data_provider.chemical_spending_for_ccg(chemical=self.chemical, ccg=self.ccg)
+        # display the data
+        self.plotter.data = data
+        self.plotter.set_title(f"{self.map.label.value} - {self.chemical_selector.value}")
+        self.status_message.value = f"Found {len(data)} results."
         self.search_button.disabled = False
 
 
