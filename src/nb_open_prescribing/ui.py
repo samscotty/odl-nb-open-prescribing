@@ -38,8 +38,8 @@ class OpenPrescribingDataExplorer(VBox):
         super().__init__(**kwargs)
         self.data_provider = data_provider if data_provider is not None else HttpApiDataProvider()
         # active search box selections
-        self._select_options: dict[str, str] = {}
-        self._chemical: Optional[str] = None
+        self._drug_name_to_id_mapping: dict[str, str] = {}
+        self._drug_code: Optional[str] = None
 
         # UI components
         self.title = HTML(
@@ -47,7 +47,7 @@ class OpenPrescribingDataExplorer(VBox):
             "<p>Use the map to select a CCG and the search box to find a chemical/product.</p>"
         )
         self.map = CCGIPyLeafletMap(self.data_provider.ccg_boundaries())
-        self.chemical_selector = Combobox(
+        self.drug_selector = Combobox(
             ensure_option=False,
             placeholder="Add names or codes e.g. Cerazette",
             layout=Layout(width="100%"),
@@ -59,29 +59,29 @@ class OpenPrescribingDataExplorer(VBox):
             disabled=True,
         )
         self.status_message = Label(layout=Layout(margin="0px 1px 10px"))
-        self.plotter = SpendPlotter()
+        self.spend_plotter = SpendPlotter()
 
         # event handlers
-        self.chemical_selector.observe(self._select_handler, "value")
+        self.drug_selector.observe(self._select_handler, "value")
         self.search_button.on_click(self._click_handler)
 
         # add components to the display
         self.children = [
             self.title,
             self.map,
-            self.chemical_selector,
+            self.drug_selector,
             self.search_button,
             self.status_message,
-            self.plotter,
+            self.spend_plotter,
         ]
 
     @property
-    def chemical(self) -> Optional[str]:
-        """Selected drug."""
-        return self._chemical
+    def drug_code(self) -> Optional[str]:
+        """Selected drug ID."""
+        return self._drug_code
 
     @property
-    def ccg(self) -> Optional[str]:
+    def ccg_code(self) -> Optional[str]:
         """Selected CCG."""
         if self.map.selected_ccg is None:
             return None
@@ -89,7 +89,7 @@ class OpenPrescribingDataExplorer(VBox):
 
     @api_rate_limiter
     def _select_handler(self, change) -> None:
-        """Handler for the chemical selector UI.
+        """Handler for the drug selector UI.
 
         Args:
             change: The observed ipywidget change.
@@ -103,27 +103,27 @@ class OpenPrescribingDataExplorer(VBox):
         # require a minimum of 3 characters before displaying any results
         if len(user_entered_input.strip()) < 3:
             self.search_button.disabled = True
-            self._select_options = {}
+            self._drug_name_to_id_mapping = {}
         # if selection has been made, remove other options
-        elif self.chemical_selector.value in self.chemical_selector.options:
+        elif self.drug_selector.value in self.drug_selector.options:
             self.search_button.disabled = False
-            self._chemical = self._select_options[self.chemical_selector.value]
-            self._select_options = {}
+            self._drug_code = self._drug_name_to_id_mapping[self.drug_selector.value]
+            self._drug_name_to_id_mapping = {}
         # otherwise query API for more possible matches
         else:
             self.search_button.disabled = True
-            self._select_options = {
+            self._drug_name_to_id_mapping = {
                 f"{o.type}: {o.name} ({o.id})": o.id
                 for o in self.data_provider.drug_details(query=user_entered_input, exact=False)
                 if o.type in ("chemical", "product")
             }
         # update possible matches
-        self.chemical_selector.options = [o for o in self._select_options]
+        self.drug_selector.options = [o for o in self._drug_name_to_id_mapping.keys()]
 
     def _click_handler(self, _) -> None:
         """Handler for the search button UI."""
         # ensure both fields are set
-        if self.chemical is None or self.ccg is None:
+        if self.ccg_code is None or self.drug_code is None:
             self.status_message.value = (
                 "Nothing to search for, please select a CCG and a product/chemical."
             )
@@ -131,10 +131,12 @@ class OpenPrescribingDataExplorer(VBox):
 
         self.search_button.disabled = True
         self.status_message.value = "Fetching the data..."
-        data = self.data_provider.chemical_spending_for_ccg(chemical=self.chemical, ccg=self.ccg)
+        data = self.data_provider.chemical_spending_for_ccg(
+            chemical=self.drug_code, ccg=self.ccg_code
+        )
         # display the data
-        self.plotter.data = data
-        self.plotter.set_title(f"{self.map.label.value} - {self.chemical_selector.value}")
+        self.spend_plotter.data = data
+        self.spend_plotter.set_title(f"{self.map.label.value} - {self.drug_selector.value}")
         self.status_message.value = f"Found {len(data)} results."
         self.search_button.disabled = False
 
