@@ -322,6 +322,7 @@ class Plotter(VBox):
         self.yvar_selector = Dropdown(
             description="Y-Axis",
             options=[(v, k) for k, v in self._yvar_field_to_label_mapping.items()],
+            layout=Layout(margin="15px 1px 10px"),
         )
         self.output = Output()
 
