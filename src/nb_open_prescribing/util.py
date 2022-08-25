@@ -10,7 +10,7 @@ class RateLimiter:
 
     Args:
         calls: Maximum number of requests to make per `period`.
-        period: Maximum number of `calls` per second.
+        period: Interval in seconds.
 
     """
 
