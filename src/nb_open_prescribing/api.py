@@ -130,7 +130,7 @@ class DataProvider(Protocol):
         ...
 
     @abstractmethod
-    def drug_details(self, query: str, exact: bool) -> list[DrugDetail]:
+    def drug_details(self, query: str, exact: bool = ...) -> list[DrugDetail]:
         """All BNF sections, chemicals and presentations matching a name (case-insensitive) or a code.
 
         Args:

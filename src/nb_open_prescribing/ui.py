@@ -114,7 +114,7 @@ class OpenPrescribingDataExplorer(VBox):
             self.search_button.disabled = True
             self._drug_name_to_id_mapping = {
                 f"{o.type}: {o.name} ({o.id})": o.id
-                for o in self.data_provider.drug_details(query=user_entered_input, exact=False)
+                for o in self.data_provider.drug_details(query=user_entered_input)
                 if o.type in ("chemical", "product")
             }
         # update possible matches
