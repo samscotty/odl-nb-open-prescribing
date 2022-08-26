@@ -1,14 +1,14 @@
 import logging
 from abc import abstractmethod
 from collections import ChainMap
-from typing import MutableMapping, Optional, Protocol
+from typing import Final, MutableMapping, Optional, Protocol
 from urllib.parse import urljoin
 
 from requests import Response, Session
 
 from .model import CCGBoundaries, CCGSpend, DrugDetail
 
-_SERVICE_BASE_URL = "https://openprescribing.net"
+_SERVICE_BASE_URL: Final[str] = "https://openprescribing.net"
 
 ApiParams = MutableMapping[str, str]
 
