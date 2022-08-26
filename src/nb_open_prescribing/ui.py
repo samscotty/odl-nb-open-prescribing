@@ -21,8 +21,6 @@ from .api import DataProvider, HttpApiDataProvider
 from .model import CCGBoundaries, CCGSpend
 from .util import RateLimiter
 
-api_rate_limiter = RateLimiter()
-
 
 class OpenPrescribingDataExplorer(VBox):
 
@@ -87,7 +85,7 @@ class OpenPrescribingDataExplorer(VBox):
             return None
         return self.map.selected_ccg.code
 
-    @api_rate_limiter
+    @RateLimiter()
     def _select_handler(self, change) -> None:
         """Handler for the drug selector UI.
 
