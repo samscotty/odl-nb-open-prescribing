@@ -12,4 +12,9 @@ Description
 ipyleaflet widget for exploring CCG data in Jupyter Notebooks.
 
 
-.. _pyscaffold-notes:
+Example
+=======
+
+.. image:: examples/odl-open-prescribing-ccg-data-explorer-small.gif
+  :width: 600
+  :alt: CCG Data Explorer UI
