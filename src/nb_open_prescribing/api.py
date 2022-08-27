@@ -131,7 +131,8 @@ class DataProvider(Protocol):
 
     @abstractmethod
     def drug_details(self, query: str, exact: bool = ...) -> list[DrugDetail]:
-        """All BNF sections, chemicals and presentations matching a name (case-insensitive) or a code.
+        """All BNF sections, chemicals and presentations matching a name (case-insensitive)
+         or a code.
 
         Args:
             query: Query string.
@@ -179,7 +180,8 @@ class HttpApiDataProvider(DataProvider):
         return self._api.query_spending_by_ccg(api_params={"code": chemical, "org": ccg})
 
     def drug_details(self, query: str, exact: bool = False) -> list[DrugDetail]:
-        """All BNF sections, chemicals and presentations matching a name (case-insensitive) or a code.
+        """All BNF sections, chemicals and presentations matching a name (case-insensitive)
+        or a code.
 
         Args:
             query: Query string.
