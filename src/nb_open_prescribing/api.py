@@ -1,14 +1,14 @@
 import logging
 from abc import abstractmethod
 from collections import ChainMap
-from typing import Iterable, MutableMapping, Optional, Protocol
+from typing import Final, MutableMapping, Optional, Protocol
 from urllib.parse import urljoin
 
 from requests import Response, Session
 
-from .model import CCGBoundaries, CCGSpend
+from .model import CCGBoundaries, CCGSpend, DrugDetail
 
-_SERVICE_BASE_URL = "https://openprescribing.net"
+_SERVICE_BASE_URL: Final[str] = "https://openprescribing.net"
 
 ApiParams = MutableMapping[str, str]
 
@@ -65,6 +65,11 @@ class OpenPrescribingHttpApi:
         # return self._search(path="spending", api_params=api_params)
         raise NotImplementedError
 
+    def query_drug_details(self, api_params: Optional[ApiParams] = None) -> list[DrugDetail]:
+        """Queries the official name and code of BNF sections, chemicals and presentations."""
+        response = self._search(path="bnf_code", api_params=api_params)
+        return [DrugDetail.from_dict(x) for x in response.json()]
+
     def _search(self, path: str, api_params: Optional[ApiParams] = None, **kwargs) -> Response:
         """Perform GET request.
 
@@ -111,7 +116,7 @@ class DataProvider(Protocol):
         ...
 
     @abstractmethod
-    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> Iterable[CCGSpend]:
+    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> list[CCGSpend]:
         """Prescription spending data for a chemical in a specified CCG.
 
         Args:
@@ -120,6 +125,21 @@ class DataProvider(Protocol):
 
         Returns:
             The CCG's chemical prescription spending.
+
+        """
+        ...
+
+    @abstractmethod
+    def drug_details(self, query: str, exact: bool = ...) -> list[DrugDetail]:
+        """All BNF sections, chemicals and presentations matching a name (case-insensitive)
+         or a code.
+
+        Args:
+            query: Query string.
+            exact: Exactly match a name or code.
+
+        Returns:
+            Official name and code of matching BNF sections, chemicals and presentations.
 
         """
         ...
@@ -146,7 +166,7 @@ class HttpApiDataProvider(DataProvider):
         """
         return self._api.query_org_location(api_params={"org_type": "ccg"})
 
-    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> Iterable[CCGSpend]:
+    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> list[CCGSpend]:
         """Prescription spending data for a chemical in a specified CCG.
 
         Args:
@@ -158,3 +178,19 @@ class HttpApiDataProvider(DataProvider):
 
         """
         return self._api.query_spending_by_ccg(api_params={"code": chemical, "org": ccg})
+
+    def drug_details(self, query: str, exact: bool = False) -> list[DrugDetail]:
+        """All BNF sections, chemicals and presentations matching a name (case-insensitive)
+        or a code.
+
+        Args:
+            query: Query string.
+            exact: Exactly match a name or code.
+
+        Returns:
+            Official name and code of matching BNF sections, chemicals and presentations.
+
+        """
+        return self._api.query_drug_details(
+            api_params={"q": query, "exact": "true" if exact else "false"}
+        )

@@ -1,9 +1,10 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Iterable, Optional, TypedDict, Union
+from typing import Iterable, Literal, Optional, TypedDict, Union
 
 
-class SpendByCCG(TypedDict):
+class SpendingByCCG(TypedDict):
     items: int
     quantity: float
     actual_cost: float
@@ -22,7 +23,7 @@ class CCGSpend:
     row_name: str
 
     @classmethod
-    def from_dict(cls, data: SpendByCCG):
+    def from_dict(cls, data: SpendingByCCG):
         return cls(
             items=data["items"],
             quantity=data["quantity"],
@@ -31,6 +32,40 @@ class CCGSpend:
             row_id=data["row_id"],
             row_name=data["row_name"],
         )
+
+
+BnfCodeType = Literal[
+    "BNF chapter", "BNF section", "BNF paragraph", "chemical", "product", "product format"
+]
+
+
+class BNFCode(TypedDict):
+    type: BnfCodeType
+    id: str
+    name: str
+
+
+class Chemical(BNFCode):
+    section: str
+
+
+class Product(BNFCode):
+    is_generic: bool
+
+
+# possible API responses from BNF search
+BnfCodeOrName = Union[BNFCode, Chemical, Product]
+
+
+@dataclass(frozen=True)
+class DrugDetail:
+    type: BnfCodeType
+    id: str
+    name: str
+
+    @classmethod
+    def from_dict(cls, data: BnfCodeOrName):
+        return cls(type=data["type"], id=data["id"], name=data["name"])
 
 
 class FeatureProperties(TypedDict):
@@ -71,7 +106,7 @@ class FeatureCollection(TypedDict):
 
 class CCGBoundaries:
     def __init__(self, feature_collection: FeatureCollection):
-        self.feature_collection = feature_collection
+        self.feature_collection = deepcopy(feature_collection)
         # used to construct a new Feature Collection for a specific CCG
         self._code_to_feature_mapping = {
             feature["properties"]["code"]: feature for feature in feature_collection["features"]
@@ -94,6 +129,3 @@ class CCGBoundaries:
 
     def __iter__(self) -> Iterable[Feature]:
         return (feature for feature in self.features)
-
-
-ApiJsonResponse = Union[FeatureCollection, list[SpendByCCG]]
