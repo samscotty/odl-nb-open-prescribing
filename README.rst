@@ -16,5 +16,5 @@ Example
 =======
 
 .. image:: examples/odl-open-prescribing-ccg-data-explorer-small.gif
-  :width: 400
+  :width: 600
   :alt: CCG Data Explorer UI
