@@ -1,5 +1,8 @@
-# Requirements file for ReadTheDocs, check .readthedocs.yml.
-# To build the module reference correctly, make sure every external package
-# under `install_requires` in `setup.cfg` is also listed here!
-sphinx>=3.2.1
-# sphinx_rtd_theme
+ipython>=8.3.0
+ipyleaflet>=0.16.0
+ipywidgets>=7.7.0
+matplotlib>=3.5.3
+pandas>=1.4.2
+requests>=2.27.1
+sphinx>=4.0.2
+sphinx_rtd_theme>=0.5.2
