@@ -18,7 +18,7 @@ from ipywidgets import (
 from matplotlib.ticker import FuncFormatter
 
 from .api import DataProvider, HttpApiDataProvider
-from .model import CCGBoundaries, CCGSpend
+from .model import CCGBoundaries, CCGSpend, DrugDetail, FeatureCollection
 from .util import RateLimiter
 
 
@@ -85,19 +85,31 @@ class OpenPrescribingDataExplorer(VBox):
             return None
         return self.map.selected_ccg.code
 
-    @RateLimiter()
-    def _select_handler(self, change) -> None:
-        """Handler for the drug selector UI.
+    def _search_spending(self, drug_code: str, ccg_code: str) -> list[CCGSpend]:
+        """Request spending data for a given drug for a given CCG."""
+        return self.data_provider.chemical_spending_for_ccg(chemical=drug_code, ccg=ccg_code)
 
-        Args:
-            change: The observed ipywidget change.
+    @RateLimiter()
+    def _search_drugs(self, user_entered_input: str) -> list[DrugDetail]:
+        """Request BNF sections, chemicals and presentations matching a given query.
 
         Note:
             A rate limiter decorator is applied to the method to prevent excessive requests
             to the API.
 
         """
+        return self.data_provider.drug_details(query=user_entered_input)
+
+    def _select_handler(self, change) -> None:
+        """Handler for the drug selector UI.
+
+        Args:
+            change: The observed ipywidget change.
+
+        """
         user_entered_input = str(change["new"])
+        # remove current selection
+        self._drug_code = None
         # require a minimum of 3 characters before displaying any results
         if len(user_entered_input.strip()) < 3:
             self.search_button.disabled = True
@@ -112,16 +124,17 @@ class OpenPrescribingDataExplorer(VBox):
             self.search_button.disabled = True
             self._drug_name_to_id_mapping = {
                 f"{o.type}: {o.name} ({o.id})": o.id
-                for o in self.data_provider.drug_details(query=user_entered_input)
+                for o in self._search_drugs(user_entered_input)
                 if o.type in ("chemical", "product")
             }
+
         # update possible matches
         self.drug_selector.options = [o for o in self._drug_name_to_id_mapping.keys()]
 
     def _click_handler(self, _) -> None:
         """Handler for the search button UI."""
         # ensure both fields are set
-        if self.ccg_code is None or self.drug_code is None:
+        if (ccg_code := self.ccg_code) is None or (drug_code := self._drug_code) is None:
             self.status_message.value = (
                 "Nothing to search for, please select a CCG and a product/chemical."
             )
@@ -129,9 +142,7 @@ class OpenPrescribingDataExplorer(VBox):
 
         self.search_button.disabled = True
         self.status_message.value = "Fetching the data..."
-        data = self.data_provider.chemical_spending_for_ccg(
-            chemical=self.drug_code, ccg=self.ccg_code
-        )
+        data = self._search_spending(drug_code, ccg_code)
         # display the data
         self.spend_plotter.data = data
         self.spend_plotter.set_title(f"{self.map.label.value} - {self.drug_selector.value}")
@@ -183,7 +194,6 @@ class CCGIPyLeafletMap(VBox):
                     "basemap": basemaps.CartoDB.Positron,
                     # NOTE ipyleaflet CRS EPSG:4326 issue
                     # "crs": projections.get(self.boundaries.crs, projections.EPSG4326),
-                    "fit_bounds": [[49, -7], [57, 7]],
                 },
                 map_attrs if map_attrs is not None else {},
                 {
@@ -229,8 +239,13 @@ class CCGIPyLeafletMap(VBox):
             code: CCG code.
 
         """
-        layer = GeoJSON(
-            data=self.boundaries[code],
+        layer = self._construct_geojson_layer(self.boundaries[code])
+        self.selected_ccg = CCGIPyLeafletLayer(code, layer)
+
+    def _construct_geojson_layer(self, feature_collection: FeatureCollection) -> GeoJSON:
+        """Create a styled ipyleaflet Geo JSON layer."""
+        return GeoJSON(
+            data=feature_collection,
             style={
                 "dashArray": "2",
                 "opacity": 1,
@@ -239,7 +254,6 @@ class CCGIPyLeafletMap(VBox):
                 "weight": 1,
             },
         )
-        self.selected_ccg = CCGIPyLeafletLayer(code, layer)
 
     def _click_handler(self, event=None, feature=None, properties=None) -> None:
         """Handler for the ipyleaflet layers."""
