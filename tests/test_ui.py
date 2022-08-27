@@ -182,23 +182,19 @@ def test_open_prescribing_data_explorer_ccg_code_property():
 
 
 @pytest.fixture
-def mock_rate_limited_search(mocker):
-    def mock__search_drugs(self, user_query):
-        return DRUG_DETAILS_TEST_DATA
-
+def undecorated_select_handler(mocker):
     yield mocker.patch(
-        "nb_open_prescribing.ui.OpenPrescribingDataExplorer._search_drugs",
-        mock__search_drugs,
+        "nb_open_prescribing.ui.OpenPrescribingDataExplorer._select_handler",
+        OpenPrescribingDataExplorer._select_handler.__wrapped__,
     )
 
 
 @suppress_matplotlib_show
-def test_open_prescribing_data_explorer_drug_code_property(mock_rate_limited_search):
+def test_open_prescribing_data_explorer_drug_code_property(undecorated_select_handler):
     op = OpenPrescribingDataExplorer(MockDataProvider())
     assert op.drug_code is None
     # ensure the options are populated
     op.drug_selector.value = "chemical"
-    # simulate selecting an option
     op.drug_selector.value = op.drug_selector.options[0]
     assert op.drug_code == "ABC123"
 
@@ -206,7 +202,7 @@ def test_open_prescribing_data_explorer_drug_code_property(mock_rate_limited_sea
 @suppress_matplotlib_show
 @pytest.mark.parametrize("params", [("A", False), ("AB", False), ("ABC", True)])
 def test_open_prescribing_data_explorer__select_handler_requires_3_characters(
-    params, mock_rate_limited_search
+    params, undecorated_select_handler
 ):
     op = OpenPrescribingDataExplorer(MockDataProvider())
     op.drug_selector.value = params[0]

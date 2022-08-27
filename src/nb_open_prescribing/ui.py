@@ -89,7 +89,6 @@ class OpenPrescribingDataExplorer(VBox):
         """Request spending data for a given drug for a given CCG."""
         return self.data_provider.chemical_spending_for_ccg(chemical=drug_code, ccg=ccg_code)
 
-    @RateLimiter()
     def _search_drugs(self, user_entered_input: str) -> list[DrugDetail]:
         """Request BNF sections, chemicals and presentations matching a given query.
 
@@ -100,6 +99,7 @@ class OpenPrescribingDataExplorer(VBox):
         """
         return self.data_provider.drug_details(query=user_entered_input)
 
+    @RateLimiter()
     def _select_handler(self, change) -> None:
         """Handler for the drug selector UI.
 
