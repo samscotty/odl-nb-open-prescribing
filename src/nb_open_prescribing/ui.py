@@ -90,18 +90,16 @@ class OpenPrescribingDataExplorer(VBox):
         return self.data_provider.chemical_spending_for_ccg(chemical=drug_code, ccg=ccg_code)
 
     def _search_drugs(self, user_entered_input: str) -> list[DrugDetail]:
-        """Request BNF sections, chemicals and presentations matching a given query.
-
-        Note:
-            A rate limiter decorator is applied to the method to prevent excessive requests
-            to the API.
-
-        """
+        """Request BNF sections, chemicals and presentations matching a given query."""
         return self.data_provider.drug_details(query=user_entered_input)
 
     @RateLimiter()
     def _select_handler(self, change) -> None:
         """Handler for the drug selector UI.
+
+        Note:
+            A rate limiter decorator is applied to the method to prevent excessive requests
+            to the API.
 
         Args:
             change: The observed ipywidget change.
