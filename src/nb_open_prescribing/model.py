@@ -105,6 +105,14 @@ class FeatureCollection(TypedDict):
 
 
 class CCGBoundaries:
+
+    """Boundaries of all CCGs.
+
+    Args:
+        feature_collection: A GeoJSON object with the type `FeatureCollection`.
+
+    """
+
     def __init__(self, feature_collection: FeatureCollection):
         self.feature_collection = deepcopy(feature_collection)
         # used to construct a new Feature Collection for a specific CCG
@@ -114,18 +122,29 @@ class CCGBoundaries:
 
     @property
     def crs(self) -> str:
+        """Coordinate Reference System."""
         return self.feature_collection["crs"]["properties"]["name"]
 
     @property
     def features(self) -> list[Feature]:
+        """List the Features in the FeatureCollection."""
         return list(self._code_to_feature_mapping.values())
 
-    def __getitem__(self, code: str) -> FeatureCollection:
+    def feature_collection_from_code(self, code: str) -> FeatureCollection:
+        """Construct a new FeatureCollection for a given CCG.
+
+        Args:
+            code: CCG code.
+
+        """
         return FeatureCollection(
             type=self.feature_collection["type"],
             crs=self.feature_collection["crs"],
             features=[self._code_to_feature_mapping[code]],
         )
+
+    def __getitem__(self, code: str) -> FeatureCollection:
+        return self.feature_collection_from_code(code)
 
     def __iter__(self) -> Iterable[Feature]:
         return (feature for feature in self.features)
