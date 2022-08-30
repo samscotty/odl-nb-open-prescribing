@@ -13,6 +13,8 @@ from ipywidgets import (
     Label,
     Layout,
     Output,
+    Select,
+    Text,
     VBox,
 )
 from matplotlib.ticker import FuncFormatter
@@ -417,3 +419,78 @@ class FAQ(VBox):
         accordion.set_title(0, "FAQ")
 
         self.children = [accordion]
+
+
+class TextDropDown(VBox):
+    def __init__(self, parent: OpenPrescribingDataExplorer, **kwargs):
+        """
+        Combined text and dropdown component.
+        """
+        super().__init__(**kwargs)
+        self.parent = parent
+
+        self.text = Text(
+            placeholder="Add names or codes e.g. Cerazette",
+            layout=Layout(margin="2px 2px 0px 2px"),
+        )
+        self.dropdown = Select(layout=Layout(margin="-1px 2px 2px 2px"))
+
+        # event handlers
+        self.text.observe(self._change_handler, names="value")
+        self.dropdown.observe(self._select_handler, names="value")
+
+    def _set_options(self, options: list[tuple[str, str]]) -> None:
+        """Set the dropdown options."""
+        self.dropdown.options = options
+
+    def _set_visibility(self, set_visible: bool) -> None:
+        """Set the visibility of the dropdown."""
+        if set_visible:
+            self.children = [self.text, self.dropdown]
+        else:
+            self.dropdown.value = None
+            self.children = [self.text]
+
+    @RateLimiter()
+    def _change_handler(self, change) -> None:
+        """Handler for edits on the text field.
+
+        The dropdown is adjusted to only include matching entries.
+
+        Note:
+            A rate limiter decorator is applied to the method to prevent excessive requests
+            to the API.
+
+        Args:
+            change: The observed ipywidget change.
+
+        """
+        user_entered_input = str(change["new"])
+        # hide dropdown if fewer than 3 characters or a selection has been made
+        if len(user_entered_input.strip()) < 3 or user_entered_input in self.dropdown.options:
+            self._set_visibility(False)
+            return None
+
+        new_options = []
+        new_options += [
+            (f"{o.type}: {o.name} ({o.id})", o.id)
+            for o in self.parent._search_drugs(user_entered_input)
+            if o.type in ("chemical", "product")
+        ]
+
+        if len(new_options) == 1:
+            # hide dropdown if nothing matches
+            self._set_visibility(False)
+            return None
+
+        # show the dropdown
+        self._set_options(new_options)
+        self._set_visibility(True)
+
+    def _select_handler(self, change) -> None:
+        """Handler for selecting an item in the dropdown."""
+        if not (selected_item := change["new"]):
+            # don't do anything on empty entries (e.g. the first one)
+            return None
+        self.text.value = selected_item
+        self._set_visibility(False)
