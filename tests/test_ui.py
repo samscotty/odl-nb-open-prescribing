@@ -11,6 +11,7 @@ from nb_open_prescribing.ui import (
     FAQ,
     CCGIPyLeafletLayer,
     CCGIPyLeafletMap,
+    DrugSearchBox,
     OpenPrescribingDataExplorer,
     SpendPlotter,
 )
@@ -122,8 +123,24 @@ GEO_JSON_LAYER = GeoJSON(
 )
 
 
-def test_ccg_ipyleaflet__construct_geojson_layer_instance():
-    ccg_map = CCGIPyLeafletMap(CCG_BOUNDARIES_TEST_DATA)
+class MockDataProvider:
+    def ccg_boundaries(self):
+        return CCG_BOUNDARIES_TEST_DATA
+
+    def chemical_spending_for_ccg(self, chemical, ccg):
+        return CCG_SPEND_TEST_DATA
+
+    def drug_details(self, query, exact=False):
+        return DRUG_DETAILS_TEST_DATA
+
+
+class MockOpenPrescribingDataExplorer:
+    def __init__(self):
+        self.data_provider = MockDataProvider()
+
+
+def test_ccg_ipyleaflet_map__construct_geojson_layer_instance():
+    ccg_map = CCGIPyLeafletMap(MockOpenPrescribingDataExplorer())
     assert isinstance(
         ccg_map._construct_geojson_layer(CCG_BOUNDARIES_TEST_DATA[CCG_TEST_CODE]), GeoJSON
     )
@@ -141,7 +158,7 @@ def mock_geojson_layer(mocker):
 
 
 def test_ccg_ipyleaflet_map_select_ccg_adds_layer(mock_geojson_layer):
-    ccg_map = CCGIPyLeafletMap(CCG_BOUNDARIES_TEST_DATA)
+    ccg_map = CCGIPyLeafletMap(MockOpenPrescribingDataExplorer())
     ccg_map.select_ccg(CCG_TEST_CODE)
     assert ccg_map.selected_ccg == CCGIPyLeafletLayer(code=CCG_TEST_CODE, layer=GEO_JSON_LAYER)
     assert ccg_map._selected_ccg == CCGIPyLeafletLayer(code=CCG_TEST_CODE, layer=GEO_JSON_LAYER)
@@ -149,7 +166,7 @@ def test_ccg_ipyleaflet_map_select_ccg_adds_layer(mock_geojson_layer):
 
 
 def test_ccg_ipyleaflet_map_selected_ccg_setter_removes_previous_layer():
-    ccg_map = CCGIPyLeafletMap(CCG_BOUNDARIES_TEST_DATA)
+    ccg_map = CCGIPyLeafletMap(MockOpenPrescribingDataExplorer())
     ccg_map.selected_ccg = CCGIPyLeafletLayer(code=CCG_TEST_CODE, layer=GEO_JSON_LAYER)
     new_layer = GeoJSON()
     ccg_map.selected_ccg = CCGIPyLeafletLayer(code="ANOTHERONE", layer=new_layer)
@@ -157,56 +174,45 @@ def test_ccg_ipyleaflet_map_selected_ccg_setter_removes_previous_layer():
     assert new_layer in ccg_map.ipyleaflet_map.layers
 
 
+def test_ccg_ipyleaflet_map_get_ccg_code():
+    ccg_map = CCGIPyLeafletMap(MockOpenPrescribingDataExplorer())
+    assert not ccg_map.get_ccg_code()
+    ccg_map.select_ccg(CCG_TEST_CODE)
+    assert ccg_map.get_ccg_code() == CCG_TEST_CODE
+
+
 DRUG_DETAILS_TEST_DATA = [
     DrugDetail(type="chemical", id="ABC123", name="chemical"),
 ]
 
 
-class MockDataProvider:
-    def ccg_boundaries(self):
-        return CCG_BOUNDARIES_TEST_DATA
-
-    def chemical_spending_for_ccg(self, chemical, ccg):
-        return CCG_SPEND_TEST_DATA
-
-    def drug_details(self, query, exact=False):
-        return DRUG_DETAILS_TEST_DATA
-
-
-@suppress_matplotlib_show
-def test_open_prescribing_data_explorer_ccg_code_property():
-    op = OpenPrescribingDataExplorer(MockDataProvider())
-    assert op.ccg_code is None
-    op.map.select_ccg(CCG_TEST_CODE)
-    assert op.ccg_code == CCG_TEST_CODE
+def test_drug_searchbox_get_selected_drug_id():
+    search = DrugSearchBox(parent=MockOpenPrescribingDataExplorer())
+    assert not search.get_selected_drug_id()
+    # ensure the options are populated
+    search.text.value = "ABC123"
+    assert search.get_selected_drug_id() == "ABC123"
 
 
 @pytest.fixture
 def undecorated_select_handler(mocker):
     yield mocker.patch(
-        "nb_open_prescribing.ui.OpenPrescribingDataExplorer._select_handler",
-        OpenPrescribingDataExplorer._select_handler.__wrapped__,
+        "nb_open_prescribing.ui.DrugSearchBox._change_handler",
+        DrugSearchBox._change_handler.__wrapped__,
     )
 
 
 @suppress_matplotlib_show
-def test_open_prescribing_data_explorer_drug_code_property(undecorated_select_handler):
-    op = OpenPrescribingDataExplorer(MockDataProvider())
-    assert op.drug_code is None
-    # ensure the options are populated
-    op.drug_selector.value = "chemical"
-    op.drug_selector.value = op.drug_selector.options[0]
-    assert op.drug_code == "ABC123"
-
-
-@suppress_matplotlib_show
-@pytest.mark.parametrize("params", [("A", False), ("AB", False), ("ABC", True)])
+@pytest.mark.parametrize(
+    argnames=["user_entered_input", "has_results"],
+    argvalues=[("A", False), ("AB", False), ("ABC", True)],
+)
 def test_open_prescribing_data_explorer__select_handler_requires_3_characters(
-    params, undecorated_select_handler
+    user_entered_input, has_results, undecorated_select_handler
 ):
     op = OpenPrescribingDataExplorer(MockDataProvider())
-    op.drug_selector.value = params[0]
-    assert (len(op.drug_selector.options) > 0) is params[1]
+    op.drug_selector.text.value = user_entered_input
+    assert (len(op.drug_selector.dropdown.options) > 0) is has_results
 
 
 @suppress_matplotlib_show
