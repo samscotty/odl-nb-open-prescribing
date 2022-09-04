@@ -472,18 +472,11 @@ class DrugSearchBox(VBox):
             self._show_dropdown(False)
             return None
 
-        new_options = [("", "")]
-        new_options += [
+        new_options = [
             (f"{o.type}: {o.name} ({o.id})", o.id)
             for o in self.parent.data_provider.drug_details(query=user_entered_input)
             if o.type in ("chemical", "product")
         ]
-
-        if len(new_options) == 1:
-            # hide dropdown if nothing matches
-            self._show_dropdown(False)
-            return None
-
         # show the dropdown
         self._set_options(new_options)
         self._show_dropdown(True)
