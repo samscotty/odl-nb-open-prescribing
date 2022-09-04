@@ -182,7 +182,10 @@ class CCGIPyLeafletMap(VBox):
         self.ipyleaflet_map.add_layer(self._selected_ccg.layer)
 
     def get_ccg_code(self) -> str:
-        """The
+        """Get the code of currently selected CCG.
+
+        Note:
+            Returns an empty string if no CCG is selected.
 
         Returns:
             The selected CCG code.
@@ -384,7 +387,13 @@ class FAQ(VBox):
 
 class DrugSearchBox(VBox):
 
-    """ """
+    """Combined text and dropdown UI component for searching the official name and code of
+    BNF sections, chemicals and presentations.
+
+    Args:
+        **kwargs: Keyword arguments to pass to the ipywidget container.
+
+    """
 
     def __init__(self, parent: OpenPrescribingDataExplorer, **kwargs):
         super().__init__(**kwargs)
