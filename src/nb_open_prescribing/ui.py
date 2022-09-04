@@ -389,7 +389,6 @@ class DrugSearchBox(VBox):
     def __init__(self, parent: OpenPrescribingDataExplorer, **kwargs):
         super().__init__(**kwargs)
         self.parent = parent
-        self._drug_id = ""
 
         self.text = Text(
             placeholder="Add names or codes e.g. Cerazette",
