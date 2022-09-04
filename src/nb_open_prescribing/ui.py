@@ -389,6 +389,8 @@ class DrugSearchBox(VBox):
     def __init__(self, parent: OpenPrescribingDataExplorer, **kwargs):
         super().__init__(**kwargs)
         self.parent = parent
+        # text box contains a valid code
+        self._valid: bool = False
 
         self.text = Text(
             placeholder="Add names or codes e.g. Cerazette",
@@ -404,7 +406,27 @@ class DrugSearchBox(VBox):
         self._show_dropdown(False)
 
     def get_selected_drug_id(self) -> str:
+        """Get the ID of the currently selected drug.
+
+        Note:
+            Returns an empty string if no ID is selected.
+
+        Returns:
+            The selected drug ID.
+
+        """
+        if not self.is_valid():
+            return ""
         return str(self.text.value)
+
+    def is_valid(self) -> bool:
+        """Check if the search box contains a valid drug ID.
+
+        Returns:
+            True if a valid ID is selected.
+
+        """
+        return self._valid
 
     def _set_options(self, options: list[tuple[str, str]]) -> None:
         """Set the dropdown options."""
@@ -432,6 +454,9 @@ class DrugSearchBox(VBox):
             change: The observed ipywidget change.
 
         """
+        # any change reset validity
+        self._valid = False
+
         user_entered_input = str(change["new"])
         # hide dropdown if fewer than 3 characters or a selection has been made
         if len(user_entered_input.strip()) < 3 or user_entered_input in self.dropdown.options:
@@ -460,5 +485,7 @@ class DrugSearchBox(VBox):
             # don't do anything on empty entries (e.g. the first one)
             return None
         self.text.value = selected_item
+        # a valid ID has been selected
+        self._valid = True
         self._show_dropdown(False)
         self.parent.is_submittable()

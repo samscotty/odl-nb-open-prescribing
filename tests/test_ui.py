@@ -138,6 +138,9 @@ class MockOpenPrescribingDataExplorer:
     def __init__(self):
         self.data_provider = MockDataProvider()
 
+    def is_submittable(self):
+        return True
+
 
 def test_ccg_ipyleaflet_map__construct_geojson_layer_instance():
     ccg_map = CCGIPyLeafletMap(MockOpenPrescribingDataExplorer())
@@ -191,6 +194,8 @@ def test_drug_searchbox_get_selected_drug_id():
     assert not search.get_selected_drug_id()
     # ensure the options are populated
     search.text.value = "ABC123"
+    # simulate selecting an item in the dropdown
+    search.dropdown.value = "ABC123"
     assert search.get_selected_drug_id() == "ABC123"
 
 
