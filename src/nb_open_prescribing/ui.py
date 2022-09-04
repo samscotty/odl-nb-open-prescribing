@@ -8,17 +8,18 @@ from ipywidgets import (
     HTML,
     Accordion,
     Button,
-    Combobox,
     Dropdown,
     Label,
     Layout,
     Output,
+    Select,
+    Text,
     VBox,
 )
 from matplotlib.ticker import FuncFormatter
 
 from .api import DataProvider, HttpApiDataProvider
-from .model import CCGBoundaries, CCGSpend, DrugDetail, FeatureCollection
+from .model import CCGBoundaries, CCGSpend, FeatureCollection
 from .util import RateLimiter
 
 
@@ -44,12 +45,8 @@ class OpenPrescribingDataExplorer(VBox):
             "<h1>Search CCG Prescribing Data</h1>"
             "<p>Use the map to select a CCG and the search box to find a chemical/product.</p>"
         )
-        self.map = CCGIPyLeafletMap(self.data_provider.ccg_boundaries())
-        self.drug_selector = Combobox(
-            ensure_option=False,
-            placeholder="Add names or codes e.g. Cerazette",
-            layout=Layout(width="100%"),
-        )
+        self.map = CCGIPyLeafletMap(parent=self)
+        self.drug_selector = DrugSearchBox(parent=self)
         self.search_button = Button(
             description="Show me the data",
             button_style="info",
@@ -60,7 +57,6 @@ class OpenPrescribingDataExplorer(VBox):
         self.spend_plotter = SpendPlotter()
 
         # event handlers
-        self.drug_selector.observe(self._select_handler, "value")
         self.search_button.on_click(self._click_handler)
 
         # add components to the display
@@ -73,66 +69,20 @@ class OpenPrescribingDataExplorer(VBox):
             self.spend_plotter,
         ]
 
-    @property
-    def drug_code(self) -> Optional[str]:
-        """Selected drug ID."""
-        return self._drug_code
-
-    @property
-    def ccg_code(self) -> Optional[str]:
-        """Selected CCG."""
-        if self.map.selected_ccg is None:
-            return None
-        return self.map.selected_ccg.code
-
-    def _search_spending(self, drug_code: str, ccg_code: str) -> list[CCGSpend]:
-        """Request spending data for a given drug for a given CCG."""
-        return self.data_provider.chemical_spending_for_ccg(chemical=drug_code, ccg=ccg_code)
-
-    def _search_drugs(self, user_entered_input: str) -> list[DrugDetail]:
-        """Request BNF sections, chemicals and presentations matching a given query."""
-        return self.data_provider.drug_details(query=user_entered_input)
-
-    @RateLimiter()
-    def _select_handler(self, change) -> None:
-        """Handler for the drug selector UI.
-
-        Note:
-            A rate limiter decorator is applied to the method to prevent excessive requests
-            to the API.
-
-        Args:
-            change: The observed ipywidget change.
-
-        """
-        user_entered_input = str(change["new"])
-        # remove current selection
-        self._drug_code = None
-        # require a minimum of 3 characters before displaying any results
-        if len(user_entered_input.strip()) < 3:
-            self.search_button.disabled = True
-            self._drug_name_to_id_mapping = {}
-        # if selection has been made, remove other options
-        elif self.drug_selector.value in self.drug_selector.options:
+    def is_submittable(self) -> bool:
+        if self.map.get_ccg_code() and self.drug_selector.get_selected_drug_id():
             self.search_button.disabled = False
-            self._drug_code = self._drug_name_to_id_mapping[self.drug_selector.value]
-            self._drug_name_to_id_mapping = {}
-        # otherwise query API for more possible matches
+            return True
         else:
             self.search_button.disabled = True
-            self._drug_name_to_id_mapping = {
-                f"{o.type}: {o.name} ({o.id})": o.id
-                for o in self._search_drugs(user_entered_input)
-                if o.type in ("chemical", "product")
-            }
-
-        # update possible matches
-        self.drug_selector.options = [o for o in self._drug_name_to_id_mapping.keys()]
+            return False
 
     def _click_handler(self, _) -> None:
         """Handler for the search button UI."""
+        ccg_code = self.map.get_ccg_code()
+        drug_code = self.drug_selector.get_selected_drug_id()
         # ensure both fields are set
-        if (ccg_code := self.ccg_code) is None or (drug_code := self._drug_code) is None:
+        if not (ccg_code or drug_code):
             self.status_message.value = (
                 "Nothing to search for, please select a CCG and a product/chemical."
             )
@@ -140,10 +90,10 @@ class OpenPrescribingDataExplorer(VBox):
 
         self.search_button.disabled = True
         self.status_message.value = "Fetching the data..."
-        data = self._search_spending(drug_code, ccg_code)
+        data = self.data_provider.chemical_spending_for_ccg(chemical=drug_code, ccg=ccg_code)
         # display the data
         self.spend_plotter.data = data
-        self.spend_plotter.set_title(f"{self.map.label.value} - {self.drug_selector.value}")
+        self.spend_plotter.set_title(f"{self.map.label.value} - {drug_code}")
         self.status_message.value = f"Found {len(data)} results."
         self.search_button.disabled = False
 
@@ -162,7 +112,7 @@ class CCGIPyLeafletMap(VBox):
     """ipyleaflet Map interface for CCG boundary data.
 
     Args:
-        boundaries: CCG feature collection.
+        parent: Open Prescribing CCG Data Explorer.
         map_attrs: ipyleaflet map attributes.
         **kwargs: Keyword arguments to pass to the ipywidget container.
 
@@ -170,12 +120,13 @@ class CCGIPyLeafletMap(VBox):
 
     def __init__(
         self,
-        boundaries: CCGBoundaries,
+        parent: OpenPrescribingDataExplorer,
         map_attrs: Optional[MutableMapping[str, Any]] = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
-        self.boundaries = boundaries
+        self.parent = parent
+        self.boundaries: CCGBoundaries = parent.data_provider.ccg_boundaries()
         self.ccgs = GeoJSON(
             data=self.boundaries.feature_collection,
             style={"opacity": 1, "fillOpacity": 0.1, "weight": 0},
@@ -230,6 +181,20 @@ class CCGIPyLeafletMap(VBox):
         self._selected_ccg = ccg
         self.ipyleaflet_map.add_layer(self._selected_ccg.layer)
 
+    def get_ccg_code(self) -> str:
+        """Get the code of currently selected CCG.
+
+        Note:
+            Returns an empty string if no CCG is selected.
+
+        Returns:
+            The selected CCG code.
+
+        """
+        if (ccg := self.selected_ccg) is None:
+            return ""
+        return ccg.code
+
     def select_ccg(self, code: str) -> None:
         """Highlight a CCG on the map.
 
@@ -258,6 +223,7 @@ class CCGIPyLeafletMap(VBox):
         name, code = (properties.get(k) for k in ("name", "code"))
         self.select_ccg(code)
         self.label.value = name
+        self.parent.is_submittable()
 
 
 class SpendPlotter(VBox):
@@ -417,3 +383,111 @@ class FAQ(VBox):
         accordion.set_title(0, "FAQ")
 
         self.children = [accordion]
+
+
+class DrugSearchBox(VBox):
+
+    """Combined text and dropdown UI component for searching the official name and code of
+    BNF sections, chemicals and presentations.
+
+    Args:
+        **kwargs: Keyword arguments to pass to the ipywidget container.
+
+    """
+
+    def __init__(self, parent: OpenPrescribingDataExplorer, **kwargs):
+        super().__init__(**kwargs)
+        self.parent = parent
+        # text box contains a valid code
+        self._valid: bool = False
+
+        self.text = Text(
+            placeholder="Add names or codes e.g. Cerazette",
+            layout=Layout(margin="2px 2px 0px 1px"),
+        )
+        self.dropdown = Select(layout=Layout(margin="-1px 2px 2px 1px"))
+
+        # event handlers
+        self.text.observe(self._change_handler, names="value")
+        self.dropdown.observe(self._select_handler, names="value")
+
+        # hide on instantiation
+        self._show_dropdown(False)
+
+    def get_selected_drug_id(self) -> str:
+        """Get the ID of the currently selected drug.
+
+        Note:
+            Returns an empty string if no ID is selected.
+
+        Returns:
+            The selected drug ID.
+
+        """
+        if not self.is_valid():
+            return ""
+        return str(self.text.value)
+
+    def is_valid(self) -> bool:
+        """Check if the search box contains a valid drug ID.
+
+        Returns:
+            True if a valid ID is selected.
+
+        """
+        return self._valid
+
+    def _set_options(self, options: list[tuple[str, str]]) -> None:
+        """Set the dropdown options."""
+        self.dropdown.options = options
+
+    def _show_dropdown(self, visible: bool) -> None:
+        """Set the visibility of the dropdown."""
+        if visible:
+            self.children = [self.text, self.dropdown]
+        else:
+            self.dropdown.value = None
+            self.children = [self.text]
+
+    @RateLimiter()
+    def _change_handler(self, change) -> None:
+        """Handler for edits on the text field.
+
+        The dropdown is adjusted to only include matching entries.
+
+        Note:
+            A rate limiter decorator is applied to the method to prevent excessive requests
+            to the API.
+
+        Args:
+            change: The observed ipywidget change.
+
+        """
+        # any change reset validity
+        self._valid = False
+
+        user_entered_input = str(change["new"])
+        # hide dropdown if fewer than 3 characters or a selection has been made
+        if len(user_entered_input.strip()) < 3 or user_entered_input in self.dropdown.options:
+            self._show_dropdown(False)
+            return None
+
+        new_options = [
+            (f"{o.type}: {o.name} ({o.id})", o.id)
+            for o in self.parent.data_provider.drug_details(query=user_entered_input)
+            if o.type in ("chemical", "product")
+        ]
+        # show the dropdown
+        self._set_options(new_options)
+        self._show_dropdown(True)
+
+    def _select_handler(self, change) -> None:
+        """Handler for selecting an item in the dropdown."""
+        if not (selected_item := change["new"]):
+            # don't do anything on empty entries (e.g. the first one)
+            return None
+        self.text.value = selected_item
+        # a valid ID has been selected
+        self._valid = True
+        self._show_dropdown(False)
+        self.parent.is_submittable()
