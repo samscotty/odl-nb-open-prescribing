@@ -36,9 +36,6 @@ class OpenPrescribingDataExplorer(VBox):
     def __init__(self, data_provider: Optional[DataProvider] = None, **kwargs):
         super().__init__(**kwargs)
         self.data_provider = data_provider if data_provider is not None else HttpApiDataProvider()
-        # active search box selections
-        self._drug_name_to_id_mapping: dict[str, str] = {}
-        self._drug_code: Optional[str] = None
 
         # UI components
         self.title = HTML(
