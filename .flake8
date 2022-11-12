@@ -1,0 +1,13 @@
+[flake8]
+
+ exclude =
+    ./build,
+    ./.venv*,
+    ./.env*,
+    ./.eggs,
+    **/.venv*,
+    **/.eggs,
+    **/.env*
+
+ max-line-length = 100
+ extend-ignore = E203
