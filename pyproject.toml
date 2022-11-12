@@ -10,7 +10,7 @@ readme = "README.md"
 repository = "https://github.com/samscotty/odl-nb-open-prescribing"
 
 [tool.poetry.dependencies]
-python = "3.9.10"
+python = "^3.10"
 ipython = "^8.3.0"
 ipyleaflet = "^0.16.0"
 ipywidgets = "^7.7.0"
