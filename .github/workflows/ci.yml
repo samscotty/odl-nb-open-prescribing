@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Poetry
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y python3-poetry python3-cachecontrol
+      # respects .python-version
+      - uses: actions/setup-python@v4
+        with:
+          cache: 'poetry'
+      - name: Install Dependencies
+        run: poetry install
+      - name: Check Style & Run Tests
+        run: |
+          poetry run scripts/style.sh
+          poetry run scripts/test.sh

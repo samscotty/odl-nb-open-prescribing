@@ -2,11 +2,7 @@
 *~
 *.py[cod]
 *.so
-*.cfg
-!.isort.cfg
-!setup.cfg
 *.orig
-*.log
 *.pot
 __pycache__/*
 .cache/*
@@ -21,7 +17,6 @@ __pycache__/*
 .settings
 .idea
 .vscode
-tags
 
 # Package files
 *.egg
@@ -49,6 +44,6 @@ cover/*
 MANIFEST
 
 # Per-project virtualenvs
+venv*/
 .venv*/
 .conda*/
-.python-version
