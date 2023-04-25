@@ -436,7 +436,10 @@ class DrugSearchBox(VBox):
 
     def _set_options(self, options: list[tuple[str, str]]) -> None:
         """Set the dropdown options."""
-        self.dropdown.options = options
+        self.dropdown.unobserve(self._select_handler, names="value")
+        self.dropdown.options = list(options)
+        self.dropdown.value = None
+        self.dropdown.observe(self._select_handler, names="value")
 
     def _show_dropdown(self, visible: bool) -> None:
         """Set the visibility of the dropdown."""
