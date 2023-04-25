@@ -18,13 +18,13 @@ matplotlib = "^3.5.3"
 pandas = "^1.4.2"
 requests = "^2.27.1"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "^22.3.0"
 isort = "^5.10.1"
 flake8 = "^4.0.1"
 mypy = "^0.950"
 pytest = "^7.1.2"
-pytest-cov = "^3.0.0"
+pytest-cov = "^4.0.0"
 pytest-mock = "^3.7.0"
 types-requests = "^2.27.27"
 
@@ -57,8 +57,13 @@ module = [
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
- addopts = "--cov nb_open_prescribing --cov-report term-missing --verbose"
- junit_family = "xunit2"
- markers = [
+addopts = "--cov nb_open_prescribing --cov-report term-missing --verbose"
+junit_family = "xunit2"
+markers = [
     "json_response: marker to pass test JSON response data to fixtures",
- ]
+]
+
+filterwarnings = [
+    # Ignore `ipywidgets` deprecation warning
+    'ignore:Jupyter is migrating its paths to use standard platformdirs:DeprecationWarning',
+]
