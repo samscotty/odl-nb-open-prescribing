@@ -1,11 +1,11 @@
-# Open Prescribing CCG Data Explorer
+# Open Prescribing Data Explorer
 
-Python modules for CCG data explorer in Jupyter Notebooks.
+Python modules for exploring England's prescribing data in a Jupyter Notebook.
 
 
 ## Description
 
-ipyleaflet widget for exploring CCG data in Jupyter Notebooks.
+Uses the [OpenPrescribing.net](https://openprescribing.net) RESTful API, created by the Bennett Institute for Applied Data Science, for exploring anonymised data about drugs prescribed by GPs, published by the NHS in England.
 
 
 ## Setup for Development
