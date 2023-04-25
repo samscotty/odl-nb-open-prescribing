@@ -1,7 +1,6 @@
-# nb-open-prescribing
+# Open Prescribing CCG Data Explorer
 
-
-Open Prescribing CCG data explorer.
+Python modules for CCG data explorer in Jupyter Notebooks.
 
 
 ## Description
