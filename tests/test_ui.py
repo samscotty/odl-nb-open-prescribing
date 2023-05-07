@@ -6,7 +6,7 @@ import pytest
 from ipyleaflet import GeoJSON
 from matplotlib import use
 
-from nb_open_prescribing.model import CCGSpend, DrugDetail, LocationBoundaries
+from nb_open_prescribing.model import DrugDetail, LocationBoundaries, LocationSpend
 from nb_open_prescribing.ui import (
     FAQ,
     CCGIPyLeafletLayer,
@@ -40,7 +40,7 @@ def suppress_matplotlib_show(func):
 
 
 CCG_SPEND_TEST_DATA = [
-    CCGSpend(
+    LocationSpend(
         items=100,
         quantity=1000,
         actual_cost=50,

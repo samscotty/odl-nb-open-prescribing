@@ -5,14 +5,14 @@ import pytest
 
 from nb_open_prescribing.api import HttpApiDataProvider, OpenPrescribingHttpApi
 from nb_open_prescribing.model import (
-    CCGSpend,
     DrugDetail,
     FeatureCollection,
     LocationBoundaries,
-    SpendingByCCG,
+    LocationSpend,
+    SpendingBySICBL,
 )
 
-SPENDING_BY_CCG_TEST_JSON_DATA: list[SpendingByCCG] = [
+SPENDING_BY_CCG_TEST_JSON_DATA: list[SpendingBySICBL] = [
     {
         "items": 600,
         "quantity": 10000.0,
@@ -57,7 +57,7 @@ def test_query_spending_by_ccg(mock_query_api_json_response):
     api = OpenPrescribingHttpApi()
     response = api.query_spending_by_ccg()
     mock_query_api_json_response.assert_called_once()
-    assert response == [CCGSpend.from_dict(o) for o in SPENDING_BY_CCG_TEST_JSON_DATA]
+    assert response == [LocationSpend.from_dict(o) for o in SPENDING_BY_CCG_TEST_JSON_DATA]
 
 
 DRUG_DETAILS_TEST_JSON_DATA = [
@@ -195,7 +195,7 @@ def test_http_api_data_provider_get_chemical_spending_for_ccg(mock_query_api_jso
     mock_query_api_json_response.assert_called_once_with(
         path="spending_by_ccg", api_params={"code": "BADF00D", "org": "ABC"}
     )
-    assert response == [CCGSpend.from_dict(o) for o in SPENDING_BY_CCG_TEST_JSON_DATA]
+    assert response == [LocationSpend.from_dict(o) for o in SPENDING_BY_CCG_TEST_JSON_DATA]
 
 
 @pytest.mark.json_response(DRUG_DETAILS_TEST_JSON_DATA)
