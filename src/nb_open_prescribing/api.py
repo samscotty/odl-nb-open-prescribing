@@ -166,7 +166,7 @@ class HttpApiDataProvider(DataProvider):
             Location boundaries.
 
         """
-        # CCG
+        # NOTE: API parameter uses a former geographical area identifier (CCG)
         return self._api.query_org_location(api_params={"org_type": "ccg"})
 
     def chemical_spending_for_location(self, chemical: str, location: str) -> list[LocationSpend]:
