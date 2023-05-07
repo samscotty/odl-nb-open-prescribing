@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Iterable, Literal, Optional, TypedDict, Union
 
 
-class SpendingByCCG(TypedDict):
+class SpendingBySICBL(TypedDict):
     items: int
     quantity: float
     actual_cost: float
@@ -14,7 +14,7 @@ class SpendingByCCG(TypedDict):
 
 
 @dataclass(frozen=True)
-class CCGSpend:
+class LocationSpend:
     items: int
     quantity: float
     actual_cost: float
@@ -23,7 +23,7 @@ class CCGSpend:
     row_name: str
 
     @classmethod
-    def from_dict(cls, data: SpendingByCCG):
+    def from_dict(cls, data: SpendingBySICBL):
         return cls(
             items=data["items"],
             quantity=data["quantity"],
@@ -104,9 +104,9 @@ class FeatureCollection(TypedDict):
     features: list[Feature]
 
 
-class CCGBoundaries:
+class LocationBoundaries:
 
-    """Boundaries of all CCGs.
+    """Boundaries of all Sub-ICB Locations.
 
     Args:
         feature_collection: A GeoJSON object with the type `FeatureCollection`.
@@ -115,7 +115,7 @@ class CCGBoundaries:
 
     def __init__(self, feature_collection: FeatureCollection):
         self.feature_collection = deepcopy(feature_collection)
-        # used to construct a new Feature Collection for a specific CCG
+        # Enables the construction of a new Feature Collection for a given location
         self._code_to_feature_mapping = {
             feature["properties"]["code"]: feature for feature in feature_collection["features"]
         }
@@ -131,10 +131,10 @@ class CCGBoundaries:
         return list(self._code_to_feature_mapping.values())
 
     def feature_collection_from_code(self, code: str) -> FeatureCollection:
-        """Construct a new FeatureCollection for a given CCG.
+        """Construct a new FeatureCollection for a given Sub-ICB Location.
 
         Args:
-            code: CCG code.
+            code: Location code.
 
         """
         return FeatureCollection(

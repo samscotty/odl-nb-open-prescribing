@@ -19,13 +19,13 @@ from ipywidgets import (
 from matplotlib.ticker import FuncFormatter
 
 from .api import DataProvider, HttpApiDataProvider
-from .model import CCGBoundaries, CCGSpend, FeatureCollection
+from .model import FeatureCollection, LocationBoundaries, LocationSpend
 from .util import RateLimiter
 
 
 class OpenPrescribingDataExplorer(VBox):
 
-    """UI for exploring Open Prescribing CCG spend data.
+    """UI for exploring England's prescribing data.
 
     Args:
         data_provider: Provider for Open Prescribing data.
@@ -39,10 +39,10 @@ class OpenPrescribingDataExplorer(VBox):
 
         # UI components
         self.title = HTML(
-            "<h1>Search CCG Prescribing Data</h1>"
-            "<p>Use the map to select a CCG and the search box to find a chemical/product.</p>"
+            "<h1>Search GP Prescribing Data</h1>"
+            "<p>Use the map to select a location and the search box to find a chemical/product.</p>"
         )
-        self.map = CCGIPyLeafletMap(parent=self)
+        self.map = LocationBoundariesMap(parent=self)
         self.drug_selector = DrugSearchBox(parent=self)
         self.search_button = Button(
             description="Show me the data",
@@ -67,7 +67,7 @@ class OpenPrescribingDataExplorer(VBox):
         ]
 
     def is_submittable(self) -> bool:
-        if self.map.get_ccg_code() and self.drug_selector.get_selected_drug_id():
+        if self.map.get_location_code() and self.drug_selector.get_selected_drug_id():
             self.search_button.disabled = False
             return True
         else:
@@ -76,18 +76,20 @@ class OpenPrescribingDataExplorer(VBox):
 
     def _click_handler(self, _) -> None:
         """Handler for the search button UI."""
-        ccg_code = self.map.get_ccg_code()
+        location_code = self.map.get_location_code()
         drug_code = self.drug_selector.get_selected_drug_id()
         # ensure both fields are set
-        if not (ccg_code or drug_code):
+        if not (location_code or drug_code):
             self.status_message.value = (
-                "Nothing to search for, please select a CCG and a product/chemical."
+                "Nothing to search for, please select a location and a product/chemical."
             )
             return None
 
         self.search_button.disabled = True
         self.status_message.value = "Fetching the data..."
-        data = self.data_provider.chemical_spending_for_ccg(chemical=drug_code, ccg=ccg_code)
+        data = self.data_provider.chemical_spending_for_location(
+            chemical=drug_code, location=location_code
+        )
         # display the data
         self.spend_plotter.data = data
         self.spend_plotter.set_title(f"{self.map.label.value} - {drug_code}")
@@ -96,20 +98,20 @@ class OpenPrescribingDataExplorer(VBox):
 
 
 @dataclass
-class CCGIPyLeafletLayer:
+class LocationBoundariesLayer:
 
-    """CCG created from a GeoJSON data structure."""
+    """Location created from a GeoJSON data structure."""
 
     code: str
     layer: GeoJSON
 
 
-class CCGIPyLeafletMap(VBox):
+class LocationBoundariesMap(VBox):
 
-    """ipyleaflet Map interface for CCG boundary data.
+    """ipyleaflet Map interface for location boundary data.
 
     Args:
-        parent: Open Prescribing CCG Data Explorer.
+        parent: Open Prescribing Data Explorer.
         map_attrs: ipyleaflet map attributes.
         **kwargs: Keyword arguments to pass to the ipywidget container.
 
@@ -123,17 +125,17 @@ class CCGIPyLeafletMap(VBox):
     ) -> None:
         super().__init__(**kwargs)
         self.parent = parent
-        self.boundaries: CCGBoundaries = parent.data_provider.ccg_boundaries()
-        self.ccgs = GeoJSON(
+        self.boundaries: LocationBoundaries = parent.data_provider.location_boundaries()
+        self._geojson_layer = GeoJSON(
             data=self.boundaries.feature_collection,
             style={"opacity": 1, "fillOpacity": 0.1, "weight": 0},
             hover_style={"fillColor": "white", "fillOpacity": 0.5},
         )
-        self._selected_ccg: Optional[CCGIPyLeafletLayer] = None
+        self._selected_layer: Optional[LocationBoundariesLayer] = None
 
         # UI components
         self.ipyleaflet_map = Map(
-            # ensure certain attributes are used
+            # Ensure certain attributes are used
             # and provide appropriate defaults for any left unspecified
             **ChainMap(
                 {
@@ -153,54 +155,54 @@ class CCGIPyLeafletMap(VBox):
                 },
             )
         )
-        # display selected CCG
+        # Display the selected location name
         self.label = Label()
 
-        # add base CCG boundaries to the map
-        self.ipyleaflet_map.add_layer(self.ccgs)
+        # Add the base location boundaries to the map
+        self.ipyleaflet_map.add_layer(self._geojson_layer)
 
-        # event handlers
-        self.ccgs.on_click(self._click_handler)
+        # Event handlers
+        self._geojson_layer.on_click(self._click_handler)
 
-        # display UI
+        # Display UI
         self.children = [self.ipyleaflet_map, self.label]
 
     @property
-    def selected_ccg(self) -> Optional[CCGIPyLeafletLayer]:
-        """Highlighted CCG layer."""
-        return self._selected_ccg
+    def selected_layer(self) -> Optional[LocationBoundariesLayer]:
+        """Highlighted location boundary layer."""
+        return self._selected_layer
 
-    @selected_ccg.setter
-    def selected_ccg(self, ccg: CCGIPyLeafletLayer) -> None:
-        if self._selected_ccg is not None:
-            self.ipyleaflet_map.remove_layer(self._selected_ccg.layer)
+    @selected_layer.setter
+    def selected_layer(self, layer: LocationBoundariesLayer) -> None:
+        if self._selected_layer is not None:
+            self.ipyleaflet_map.remove_layer(self._selected_layer.layer)
 
-        self._selected_ccg = ccg
-        self.ipyleaflet_map.add_layer(self._selected_ccg.layer)
+        self._selected_layer = layer
+        self.ipyleaflet_map.add_layer(self._selected_layer.layer)
 
-    def get_ccg_code(self) -> str:
-        """Get the code of currently selected CCG.
+    def get_location_code(self) -> str:
+        """Get the code of currently selected location.
 
         Note:
-            Returns an empty string if no CCG is selected.
+            Returns an empty string if no location is selected.
 
         Returns:
-            The selected CCG code.
+            The selected location code.
 
         """
-        if (ccg := self.selected_ccg) is None:
+        if (location := self.selected_layer) is None:
             return ""
-        return ccg.code
+        return location.code
 
-    def select_ccg(self, code: str) -> None:
-        """Highlight a CCG on the map.
+    def select_location(self, code: str) -> None:
+        """Highlight a location on the map.
 
         Args:
-            code: CCG code.
+            code: ODS code.
 
         """
         layer = self._construct_geojson_layer(self.boundaries[code])
-        self.selected_ccg = CCGIPyLeafletLayer(code, layer)
+        self.selected_layer = LocationBoundariesLayer(code, layer)
 
     def _construct_geojson_layer(self, feature_collection: FeatureCollection) -> GeoJSON:
         """Create a styled ipyleaflet Geo JSON layer."""
@@ -218,14 +220,14 @@ class CCGIPyLeafletMap(VBox):
     def _click_handler(self, event=None, feature=None, properties=None) -> None:
         """Handler for the ipyleaflet layers."""
         name, code = (properties.get(k) for k in ("name", "code"))
-        self.select_ccg(code)
+        self.select_location(code)
         self.label.value = name
         self.parent.is_submittable()
 
 
 class SpendPlotter(VBox):
 
-    """UI for plotting Open Prescribing CCG spend data.
+    """UI for plotting Open Prescribing spend data.
 
     Args:
         **kwargs: Keyword arguments to pass to the ipywidget container.
@@ -234,14 +236,14 @@ class SpendPlotter(VBox):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._data: list[CCGSpend] = []
+        self._data: list[LocationSpend] = []
         self._yvar_field_to_label_mapping = {
             "items": "Items",
             "quantity": "Quantity",
             "actual_cost": "Actual Cost (£)",
         }
 
-        # define widgets
+        # Define widgets
         self.faq = FAQ()
         self.yvar_selector = Dropdown(
             description="Y-Axis",
@@ -250,7 +252,7 @@ class SpendPlotter(VBox):
         )
         self.output = Output()
 
-        # matplotlib figure/axis
+        # Matplotlib figure/axis
         with self.output:
             # prevent duplicate render
             plt.ioff()
@@ -261,32 +263,32 @@ class SpendPlotter(VBox):
         self.ax.grid(c="#eee")
         self.fig.canvas.toolbar_position = "bottom"
 
-        # event handlers
+        # Event handlers
         self.yvar_selector.observe(self._change_handler, "value")
 
-        # do not display UI components on instantiation
+        # Do not display UI components on instantiation
         self.hide()
 
         self.children = [self.faq, self.yvar_selector, self.output]
 
     @property
-    def data(self) -> list[CCGSpend]:
-        """CCG spend data."""
+    def data(self) -> list[LocationSpend]:
+        """Location spend data."""
         return list(self._data)
 
     @data.setter
-    def data(self, new_data: list[CCGSpend]) -> None:
+    def data(self, new_data: list[LocationSpend]) -> None:
         if new_data:
             self.show(new_data)
         else:
             self.hide()
         self._data = list(new_data)
 
-    def show(self, data: list[CCGSpend]) -> None:
+    def show(self, data: list[LocationSpend]) -> None:
         """Render the plot with new data and display the UI components.
 
         Args:
-            data: CCG spend data.
+            data: Location spend data.
 
         """
         x, y = zip(*((o.date, getattr(o, self.yvar_selector.value)) for o in data))
@@ -395,7 +397,7 @@ class DrugSearchBox(VBox):
     def __init__(self, parent: OpenPrescribingDataExplorer, **kwargs):
         super().__init__(**kwargs)
         self.parent = parent
-        # text box contains a valid code
+        # Text box contains a valid code
         self._valid: bool = False
 
         self.text = Text(
@@ -404,11 +406,11 @@ class DrugSearchBox(VBox):
         )
         self.dropdown = Select(layout=Layout(margin="-1px 2px 2px 1px"))
 
-        # event handlers
+        # Event handlers
         self.text.observe(self._change_handler, names="value")
         self.dropdown.observe(self._select_handler, names="value")
 
-        # hide on instantiation
+        # Hide on instantiation
         self._show_dropdown(False)
 
     def get_selected_drug_id(self) -> str:
@@ -463,11 +465,11 @@ class DrugSearchBox(VBox):
             change: The observed ipywidget change.
 
         """
-        # any change reset validity
+        # Any change reset validity
         self._valid = False
 
         user_entered_input = str(change["new"])
-        # hide dropdown if fewer than 3 characters or a selection has been made
+        # Hide dropdown if fewer than 3 characters or a selection has been made
         if len(user_entered_input.strip()) < 3 or user_entered_input in self.dropdown.options:
             self._show_dropdown(False)
             return None
@@ -477,17 +479,17 @@ class DrugSearchBox(VBox):
             for o in self.parent.data_provider.drug_details(query=user_entered_input)
             if o.type in ("chemical", "product")
         ]
-        # show the dropdown
+        # Show the dropdown
         self._set_options(new_options)
         self._show_dropdown(True)
 
     def _select_handler(self, change) -> None:
         """Handler for selecting an item in the dropdown."""
         if not (selected_item := change["new"]):
-            # don't do anything on empty entries (e.g. the first one)
+            # Don't do anything on empty entries
             return None
         self.text.value = selected_item
-        # a valid ID has been selected
+        # A valid ID has been selected
         self._valid = True
         self._show_dropdown(False)
         self.parent.is_submittable()

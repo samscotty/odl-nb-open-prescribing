@@ -5,17 +5,17 @@ import pytest
 
 from nb_open_prescribing.model import (
     BNFCode,
-    CCGBoundaries,
-    CCGSpend,
     Chemical,
     DrugDetail,
     Feature,
     FeatureCollection,
+    LocationBoundaries,
+    LocationSpend,
     Product,
-    SpendingByCCG,
+    SpendingBySICBL,
 )
 
-SPEND_BY_CCG_TEST_DATA: SpendingByCCG = {
+SPEND_BY_CCG_TEST_DATA: SpendingBySICBL = {
     "items": 100,
     "quantity": 10000.0,
     "actual_cost": 12345.67,
@@ -26,7 +26,7 @@ SPEND_BY_CCG_TEST_DATA: SpendingByCCG = {
 
 
 def test_spend_by_ccg_from_dict():
-    assert CCGSpend.from_dict(SPEND_BY_CCG_TEST_DATA) == CCGSpend(
+    assert LocationSpend.from_dict(SPEND_BY_CCG_TEST_DATA) == LocationSpend(
         items=100,
         quantity=10000.0,
         actual_cost=12345.67,
@@ -37,12 +37,12 @@ def test_spend_by_ccg_from_dict():
 
 
 def test_spend_by_ccg_from_dict_parses_datetime():
-    assert isinstance(CCGSpend.from_dict(SPEND_BY_CCG_TEST_DATA).date, date)
+    assert isinstance(LocationSpend.from_dict(SPEND_BY_CCG_TEST_DATA).date, date)
 
 
 def test_spend_by_ccg_frostiness():
     with pytest.raises(FrozenInstanceError):
-        CCGSpend.from_dict(SPEND_BY_CCG_TEST_DATA).items = 1_000
+        LocationSpend.from_dict(SPEND_BY_CCG_TEST_DATA).items = 1_000
 
 
 BNF_CODE_TEST_DATA: BNFCode = {
@@ -110,18 +110,20 @@ FEATURE_COLLECTION_TEST_DATA: FeatureCollection = {
 
 def test_ccg_boundaries_get_crs_projection():
     assert (
-        CCGBoundaries(FEATURE_COLLECTION_TEST_DATA).crs
+        LocationBoundaries(FEATURE_COLLECTION_TEST_DATA).crs
         == FEATURE_COLLECTION_TEST_DATA["crs"]["properties"]["name"]
     )
 
 
 def test_ccg_boundaries_list_features():
-    assert CCGBoundaries(FEATURE_COLLECTION_TEST_DATA).features == [FEATURE_TEST_DATA]
+    assert LocationBoundaries(FEATURE_COLLECTION_TEST_DATA).features == [FEATURE_TEST_DATA]
 
 
 def test_ccg_boundaries_get_feature():
-    assert CCGBoundaries(FEATURE_COLLECTION_TEST_DATA)["DEADBEEF"] == FEATURE_COLLECTION_TEST_DATA
+    assert (
+        LocationBoundaries(FEATURE_COLLECTION_TEST_DATA)["DEADBEEF"] == FEATURE_COLLECTION_TEST_DATA
+    )
 
 
 def test_ccg_boundaries_iterable():
-    assert [f for f in (CCGBoundaries(FEATURE_COLLECTION_TEST_DATA))] == [FEATURE_TEST_DATA]
+    assert [f for f in (LocationBoundaries(FEATURE_COLLECTION_TEST_DATA))] == [FEATURE_TEST_DATA]

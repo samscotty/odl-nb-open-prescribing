@@ -5,21 +5,21 @@ import pytest
 
 from nb_open_prescribing.api import HttpApiDataProvider, OpenPrescribingHttpApi
 from nb_open_prescribing.model import (
-    CCGBoundaries,
-    CCGSpend,
     DrugDetail,
     FeatureCollection,
-    SpendingByCCG,
+    LocationBoundaries,
+    LocationSpend,
+    SpendingBySICBL,
 )
 
-SPENDING_BY_CCG_TEST_JSON_DATA: list[SpendingByCCG] = [
+SPENDING_BY_SICBL_TEST_JSON_DATA: list[SpendingBySICBL] = [
     {
         "items": 600,
         "quantity": 10000.0,
         "actual_cost": 12345.67,
         "date": "2022-01-01",
         "row_id": "ABC",
-        "row_name": "ANOTHER CCG",
+        "row_name": "ANOTHER SICBL",
     },
     {
         "items": 700,
@@ -27,7 +27,7 @@ SPENDING_BY_CCG_TEST_JSON_DATA: list[SpendingByCCG] = [
         "actual_cost": 23456.78,
         "date": "2022-02-01",
         "row_id": "ABC",
-        "row_name": "ANOTHER CCG",
+        "row_name": "ANOTHER SICBL",
     },
     {
         "items": 800,
@@ -35,7 +35,7 @@ SPENDING_BY_CCG_TEST_JSON_DATA: list[SpendingByCCG] = [
         "actual_cost": 34567.89,
         "date": "2022-03-01",
         "row_id": "ABC",
-        "row_name": "ANOTHER CCG",
+        "row_name": "ANOTHER SICBL",
     },
 ]
 
@@ -52,12 +52,12 @@ def mock_query_api_json_response(mocker, request):
     )
 
 
-@pytest.mark.json_response(SPENDING_BY_CCG_TEST_JSON_DATA)
-def test_query_spending_by_ccg(mock_query_api_json_response):
+@pytest.mark.json_response(SPENDING_BY_SICBL_TEST_JSON_DATA)
+def test_query_spending_by_location(mock_query_api_json_response):
     api = OpenPrescribingHttpApi()
-    response = api.query_spending_by_ccg()
+    response = api.query_spending_by_location()
     mock_query_api_json_response.assert_called_once()
-    assert response == [CCGSpend.from_dict(o) for o in SPENDING_BY_CCG_TEST_JSON_DATA]
+    assert response == [LocationSpend.from_dict(o) for o in SPENDING_BY_SICBL_TEST_JSON_DATA]
 
 
 DRUG_DETAILS_TEST_JSON_DATA = [
@@ -143,7 +143,7 @@ FEATURE_COLLECTION_TEST_JSON_DATA: FeatureCollection = {
 def test_query_org_location(mock_query_api_json_response):
     api = OpenPrescribingHttpApi()
     actual = api.query_org_location()
-    expected = CCGBoundaries(FEATURE_COLLECTION_TEST_JSON_DATA)
+    expected = LocationBoundaries(FEATURE_COLLECTION_TEST_JSON_DATA)
     mock_query_api_json_response.assert_called_once()
     assert actual.crs == expected.crs
     assert actual.features == expected.features
@@ -161,12 +161,14 @@ def mock_requests_response(mocker):
     )
 
 
+LOCATION_BOUNDARIES_ENDPOINT = "https://openprescribing.net/api/1.0/org_location"
+
+
 def test__search_query_construction(mock_requests_response):
     api = OpenPrescribingHttpApi()
     api.query_org_location()
     mock_requests_response.assert_called_once_with(
-        "https://openprescribing.net/api/1.0/org_location",
-        params=ChainMap({"format": "json"}),
+        LOCATION_BOUNDARIES_ENDPOINT, params=ChainMap({"format": "json"})
     )
 
 
@@ -174,8 +176,7 @@ def test__search_handles_api_params(mock_requests_response):
     api = OpenPrescribingHttpApi()
     api.query_org_location(api_params={"add": "me"})
     mock_requests_response.assert_called_once_with(
-        "https://openprescribing.net/api/1.0/org_location",
-        params=ChainMap({"format": "json"}, {"add": "me"}),
+        LOCATION_BOUNDARIES_ENDPOINT, params=ChainMap({"format": "json"}, {"add": "me"})
     )
 
 
@@ -183,19 +184,19 @@ def test__search_handles_api_params_json_format(mock_requests_response):
     api = OpenPrescribingHttpApi()
     api.query_org_location(api_params={"format": "csv", "still": "json"})
     mock_requests_response.assert_called_once_with(
-        "https://openprescribing.net/api/1.0/org_location",
+        LOCATION_BOUNDARIES_ENDPOINT,
         params=ChainMap({"format": "json"}, {"format": "csv", "still": "json"}),
     )
 
 
-@pytest.mark.json_response(SPENDING_BY_CCG_TEST_JSON_DATA)
-def test_http_api_data_provider_get_chemical_spending_for_ccg(mock_query_api_json_response):
+@pytest.mark.json_response(SPENDING_BY_SICBL_TEST_JSON_DATA)
+def test_http_api_data_provider_get_chemical_spending_for_location(mock_query_api_json_response):
     provider = HttpApiDataProvider()
-    response = provider.chemical_spending_for_ccg(chemical="BADF00D", ccg="ABC")
+    response = provider.chemical_spending_for_location(chemical="BADF00D", location="ABC")
     mock_query_api_json_response.assert_called_once_with(
-        path="spending_by_ccg", api_params={"code": "BADF00D", "org": "ABC"}
+        path="spending_by_sicbl", api_params={"code": "BADF00D", "org": "ABC"}
     )
-    assert response == [CCGSpend.from_dict(o) for o in SPENDING_BY_CCG_TEST_JSON_DATA]
+    assert response == [LocationSpend.from_dict(o) for o in SPENDING_BY_SICBL_TEST_JSON_DATA]
 
 
 @pytest.mark.json_response(DRUG_DETAILS_TEST_JSON_DATA)
@@ -209,9 +210,9 @@ def test_http_api_data_provider_get_drug_details(mock_query_api_json_response):
 
 
 @pytest.mark.json_response(FEATURE_COLLECTION_TEST_JSON_DATA)
-def test_http_api_data_provider_get_ccg_boundaries(mock_query_api_json_response):
+def test_http_api_data_provider_get_location_boundaries(mock_query_api_json_response):
     provider = HttpApiDataProvider()
-    provider.ccg_boundaries()
+    provider.location_boundaries()
     mock_query_api_json_response.assert_called_once_with(
         path="org_location", api_params={"org_type": "ccg"}
     )
