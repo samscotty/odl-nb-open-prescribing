@@ -19,7 +19,7 @@ from ipywidgets import (
 from matplotlib.ticker import FuncFormatter
 
 from .api import DataProvider, HttpApiDataProvider
-from .model import CCGSpend, FeatureCollection, LocationBoundaries
+from .model import FeatureCollection, LocationBoundaries, LocationSpend
 from .util import RateLimiter
 
 
@@ -234,7 +234,7 @@ class SpendPlotter(VBox):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._data: list[CCGSpend] = []
+        self._data: list[LocationSpend] = []
         self._yvar_field_to_label_mapping = {
             "items": "Items",
             "quantity": "Quantity",
@@ -270,19 +270,19 @@ class SpendPlotter(VBox):
         self.children = [self.faq, self.yvar_selector, self.output]
 
     @property
-    def data(self) -> list[CCGSpend]:
+    def data(self) -> list[LocationSpend]:
         """CCG spend data."""
         return list(self._data)
 
     @data.setter
-    def data(self, new_data: list[CCGSpend]) -> None:
+    def data(self, new_data: list[LocationSpend]) -> None:
         if new_data:
             self.show(new_data)
         else:
             self.hide()
         self._data = list(new_data)
 
-    def show(self, data: list[CCGSpend]) -> None:
+    def show(self, data: list[LocationSpend]) -> None:
         """Render the plot with new data and display the UI components.
 
         Args:

@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Iterable, Literal, Optional, TypedDict, Union
 
 
-class SpendingByCCG(TypedDict):
+class SpendingBySICBL(TypedDict):
     items: int
     quantity: float
     actual_cost: float
@@ -14,7 +14,7 @@ class SpendingByCCG(TypedDict):
 
 
 @dataclass(frozen=True)
-class CCGSpend:
+class LocationSpend:
     items: int
     quantity: float
     actual_cost: float
@@ -23,7 +23,7 @@ class CCGSpend:
     row_name: str
 
     @classmethod
-    def from_dict(cls, data: SpendingByCCG):
+    def from_dict(cls, data: SpendingBySICBL):
         return cls(
             items=data["items"],
             quantity=data["quantity"],

@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 
 from requests import Response, Session
 
-from .model import CCGSpend, DrugDetail, LocationBoundaries
+from .model import DrugDetail, LocationBoundaries, LocationSpend
 
 _SERVICE_BASE_URL: Final[str] = "https://openprescribing.net"
 
@@ -47,7 +47,7 @@ class OpenPrescribingHttpApi:
         response = self._search(path="org_location", api_params=api_params)
         return LocationBoundaries(response.json())
 
-    def query_spending_by_ccg(self, api_params: Optional[ApiParams] = None) -> list[CCGSpend]:
+    def query_spending_by_ccg(self, api_params: Optional[ApiParams] = None) -> list[LocationSpend]:
         """Queries the last five years of data and returns spending and items by CCG by month.
 
         Args:
@@ -58,7 +58,7 @@ class OpenPrescribingHttpApi:
 
         """
         response = self._search(path="spending_by_ccg", api_params=api_params)
-        return [CCGSpend.from_dict(x) for x in response.json()]
+        return [LocationSpend.from_dict(x) for x in response.json()]
 
     def query_spending_by_code(self, api_params: Optional[ApiParams] = None):
         """Queries the last five years of data and returns total spending and items by month."""
@@ -116,7 +116,7 @@ class DataProvider(Protocol):
         ...
 
     @abstractmethod
-    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> list[CCGSpend]:
+    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> list[LocationSpend]:
         """Prescription spending data for a chemical in a specified CCG.
 
         Args:
@@ -166,7 +166,7 @@ class HttpApiDataProvider(DataProvider):
         """
         return self._api.query_org_location(api_params={"org_type": "ccg"})
 
-    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> list[CCGSpend]:
+    def chemical_spending_for_ccg(self, chemical: str, ccg: str) -> list[LocationSpend]:
         """Prescription spending data for a chemical in a specified CCG.
 
         Args:
