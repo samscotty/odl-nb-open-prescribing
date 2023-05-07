@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nb-open-prescribing"
-version = "1.1.0"
+version = "2.0.0"
 description = "Open Prescribing CCG data explorer."
 license = "MIT"
 authors = [
