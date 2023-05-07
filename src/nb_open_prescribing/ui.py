@@ -19,7 +19,7 @@ from ipywidgets import (
 from matplotlib.ticker import FuncFormatter
 
 from .api import DataProvider, HttpApiDataProvider
-from .model import CCGBoundaries, CCGSpend, FeatureCollection
+from .model import CCGSpend, FeatureCollection, LocationBoundaries
 from .util import RateLimiter
 
 
@@ -123,7 +123,7 @@ class CCGIPyLeafletMap(VBox):
     ) -> None:
         super().__init__(**kwargs)
         self.parent = parent
-        self.boundaries: CCGBoundaries = parent.data_provider.ccg_boundaries()
+        self.boundaries: LocationBoundaries = parent.data_provider.ccg_boundaries()
         self.ccgs = GeoJSON(
             data=self.boundaries.feature_collection,
             style={"opacity": 1, "fillOpacity": 0.1, "weight": 0},

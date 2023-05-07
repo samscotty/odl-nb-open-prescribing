@@ -5,12 +5,12 @@ import pytest
 
 from nb_open_prescribing.model import (
     BNFCode,
-    CCGBoundaries,
     CCGSpend,
     Chemical,
     DrugDetail,
     Feature,
     FeatureCollection,
+    LocationBoundaries,
     Product,
     SpendingByCCG,
 )
@@ -110,18 +110,20 @@ FEATURE_COLLECTION_TEST_DATA: FeatureCollection = {
 
 def test_ccg_boundaries_get_crs_projection():
     assert (
-        CCGBoundaries(FEATURE_COLLECTION_TEST_DATA).crs
+        LocationBoundaries(FEATURE_COLLECTION_TEST_DATA).crs
         == FEATURE_COLLECTION_TEST_DATA["crs"]["properties"]["name"]
     )
 
 
 def test_ccg_boundaries_list_features():
-    assert CCGBoundaries(FEATURE_COLLECTION_TEST_DATA).features == [FEATURE_TEST_DATA]
+    assert LocationBoundaries(FEATURE_COLLECTION_TEST_DATA).features == [FEATURE_TEST_DATA]
 
 
 def test_ccg_boundaries_get_feature():
-    assert CCGBoundaries(FEATURE_COLLECTION_TEST_DATA)["DEADBEEF"] == FEATURE_COLLECTION_TEST_DATA
+    assert (
+        LocationBoundaries(FEATURE_COLLECTION_TEST_DATA)["DEADBEEF"] == FEATURE_COLLECTION_TEST_DATA
+    )
 
 
 def test_ccg_boundaries_iterable():
-    assert [f for f in (CCGBoundaries(FEATURE_COLLECTION_TEST_DATA))] == [FEATURE_TEST_DATA]
+    assert [f for f in (LocationBoundaries(FEATURE_COLLECTION_TEST_DATA))] == [FEATURE_TEST_DATA]

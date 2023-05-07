@@ -6,7 +6,7 @@ import pytest
 from ipyleaflet import GeoJSON
 from matplotlib import use
 
-from nb_open_prescribing.model import CCGBoundaries, CCGSpend, DrugDetail
+from nb_open_prescribing.model import CCGSpend, DrugDetail, LocationBoundaries
 from nb_open_prescribing.ui import (
     FAQ,
     CCGIPyLeafletLayer,
@@ -75,7 +75,7 @@ def test_spend_plotter_assign_no_data_hides_plot():
 
 CCG_TEST_CODE = "DEADBEEF"
 
-CCG_BOUNDARIES_TEST_DATA = CCGBoundaries(
+CCG_BOUNDARIES_TEST_DATA = LocationBoundaries(
     {
         "type": "FeatureCollection",
         "crs": {"type": "name", "properties": {"name": "ABCD:1234"}},

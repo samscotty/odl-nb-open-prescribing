@@ -104,9 +104,9 @@ class FeatureCollection(TypedDict):
     features: list[Feature]
 
 
-class CCGBoundaries:
+class LocationBoundaries:
 
-    """Boundaries of all CCGs.
+    """Boundaries of all Sub-ICB Locations.
 
     Args:
         feature_collection: A GeoJSON object with the type `FeatureCollection`.
@@ -131,10 +131,10 @@ class CCGBoundaries:
         return list(self._code_to_feature_mapping.values())
 
     def feature_collection_from_code(self, code: str) -> FeatureCollection:
-        """Construct a new FeatureCollection for a given CCG.
+        """Construct a new FeatureCollection for a given Sub-ICB Location.
 
         Args:
-            code: CCG code.
+            code: Location code.
 
         """
         return FeatureCollection(

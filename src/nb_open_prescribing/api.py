@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 
 from requests import Response, Session
 
-from .model import CCGBoundaries, CCGSpend, DrugDetail
+from .model import CCGSpend, DrugDetail, LocationBoundaries
 
 _SERVICE_BASE_URL: Final[str] = "https://openprescribing.net"
 
@@ -31,8 +31,8 @@ class OpenPrescribingHttpApi:
         self.logger = logging.getLogger(__name__)
         self.logger.debug(f"connected to {self._service_url}")
 
-    def query_org_location(self, api_params: Optional[ApiParams] = None) -> CCGBoundaries:
-        """Search for the boundaries of a CCG, or location of a practice, by code.
+    def query_org_location(self, api_params: Optional[ApiParams] = None) -> LocationBoundaries:
+        """Search for the boundaries of a Sub-ICB Location, or location of a practice, by code.
 
         Args:
             api_params: Query parameters to send with GET request.
@@ -41,11 +41,11 @@ class OpenPrescribingHttpApi:
             API returns GeoJSON.
 
         Returns:
-            Boundaries of the CCGs.
+            Location boundaries.
 
         """
         response = self._search(path="org_location", api_params=api_params)
-        return CCGBoundaries(response.json())
+        return LocationBoundaries(response.json())
 
     def query_spending_by_ccg(self, api_params: Optional[ApiParams] = None) -> list[CCGSpend]:
         """Queries the last five years of data and returns spending and items by CCG by month.
@@ -106,11 +106,11 @@ class DataProvider(Protocol):
     """
 
     @abstractmethod
-    def ccg_boundaries(self) -> CCGBoundaries:
-        """Get the boundaries of all CCGs.
+    def ccg_boundaries(self) -> LocationBoundaries:
+        """Get the boundaries of all Sub-ICB Locations.
 
         Returns:
-            Boundaries of the CCGs.
+            Location boundaries.
 
         """
         ...
@@ -157,11 +157,11 @@ class HttpApiDataProvider(DataProvider):
     def __init__(self, api: Optional[OpenPrescribingHttpApi] = None) -> None:
         self._api = api if api is not None else OpenPrescribingHttpApi()
 
-    def ccg_boundaries(self) -> CCGBoundaries:
-        """Get the boundaries of all CCGs.
+    def ccg_boundaries(self) -> LocationBoundaries:
+        """Get the boundaries of all Sub-ICB Locations.
 
         Returns:
-            Boundaries of the CCGs.
+            Location boundaries.
 
         """
         return self._api.query_org_location(api_params={"org_type": "ccg"})

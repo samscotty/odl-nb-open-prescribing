@@ -5,10 +5,10 @@ import pytest
 
 from nb_open_prescribing.api import HttpApiDataProvider, OpenPrescribingHttpApi
 from nb_open_prescribing.model import (
-    CCGBoundaries,
     CCGSpend,
     DrugDetail,
     FeatureCollection,
+    LocationBoundaries,
     SpendingByCCG,
 )
 
@@ -143,7 +143,7 @@ FEATURE_COLLECTION_TEST_JSON_DATA: FeatureCollection = {
 def test_query_org_location(mock_query_api_json_response):
     api = OpenPrescribingHttpApi()
     actual = api.query_org_location()
-    expected = CCGBoundaries(FEATURE_COLLECTION_TEST_JSON_DATA)
+    expected = LocationBoundaries(FEATURE_COLLECTION_TEST_JSON_DATA)
     mock_query_api_json_response.assert_called_once()
     assert actual.crs == expected.crs
     assert actual.features == expected.features
