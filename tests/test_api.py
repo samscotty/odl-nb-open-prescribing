@@ -161,12 +161,14 @@ def mock_requests_response(mocker):
     )
 
 
+LOCATION_BOUNDARIES_ENDPOINT = "https://openprescribing.net/api/1.0/org_location"
+
+
 def test__search_query_construction(mock_requests_response):
     api = OpenPrescribingHttpApi()
     api.query_org_location()
     mock_requests_response.assert_called_once_with(
-        "https://openprescribing.net/api/1.0/org_location",
-        params=ChainMap({"format": "json"}),
+        LOCATION_BOUNDARIES_ENDPOINT, params=ChainMap({"format": "json"})
     )
 
 
@@ -174,8 +176,7 @@ def test__search_handles_api_params(mock_requests_response):
     api = OpenPrescribingHttpApi()
     api.query_org_location(api_params={"add": "me"})
     mock_requests_response.assert_called_once_with(
-        "https://openprescribing.net/api/1.0/org_location",
-        params=ChainMap({"format": "json"}, {"add": "me"}),
+        LOCATION_BOUNDARIES_ENDPOINT, params=ChainMap({"format": "json"}, {"add": "me"})
     )
 
 
@@ -183,7 +184,7 @@ def test__search_handles_api_params_json_format(mock_requests_response):
     api = OpenPrescribingHttpApi()
     api.query_org_location(api_params={"format": "csv", "still": "json"})
     mock_requests_response.assert_called_once_with(
-        "https://openprescribing.net/api/1.0/org_location",
+        LOCATION_BOUNDARIES_ENDPOINT,
         params=ChainMap({"format": "json"}, {"format": "csv", "still": "json"}),
     )
 
